@@ -57,3 +57,11 @@ git push -u origin main --tags
   - El tamaño es lineal en el radio, pero la energía crece mucho más rápido que la magnitud.
   - No hay forma de comparar zonas (norte, centro, sur) de un vistazo.
   - Con la reproducción cronológica, los eventos del mismo día suenan juntos y se confunden.
+
+### V2 — primera iteración de diseño
+
+- **Qué cambió:**
+  - El tamaño ahora sigue una regla explícita: el área es proporcional a (energía)^(1/3), de modo que cada +1 de magnitud multiplica la energía por ~32 y el área por ~3,2 (antes el radio era lineal en la magnitud).
+  - Se agregó una leyenda de tamaños (M7, M8, M9) con el círculo de referencia.
+  - Los círculos pasaron a ser más transparentes y con borde del color de su categoría de profundidad, para que se vean los eventos que se superponen (por ejemplo, los de 1960).
+- **Se mantiene igual:** datos, ejes, colores, filtros, rango de años y sonificación.

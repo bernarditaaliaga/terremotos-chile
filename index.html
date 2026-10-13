@@ -43,10 +43,12 @@
   #panel dd { margin: 0; }
   .hint { color: var(--muted); font-size: 0.85rem; margin-top: 10px; }
   .legend { font-size: 0.85rem; color: var(--muted); margin-top: 12px; }
+  .tamanos { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+  .tamanos svg { width: auto; display: inline-block; vertical-align: middle; }
   .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; vertical-align: baseline; }
   .tick text { font-size: 11px; fill: var(--muted); }
   .axis-label { font-size: 11px; fill: var(--muted); }
-  circle.q { fill-opacity: 0.72; stroke: #fff; stroke-width: 1; cursor: pointer; transition: stroke-width .1s; }
+  circle.q { fill: var(--c); fill-opacity: 0.45; stroke: var(--c); stroke-width: 1.5; cursor: pointer; transition: stroke-width .1s; }
   circle.q:hover, circle.q.sel { stroke: var(--ink); stroke-width: 2; }
   circle.q.sonando { stroke: var(--ink); stroke-width: 3; }
   .lbl { font-size: 12px; font-weight: 600; fill: var(--ink); }
@@ -87,6 +89,7 @@
         <span class="dot" style="background:var(--med)"></span>intermedio (50–100 km)
         <span class="dot" style="background:var(--prof)"></span>profundo (&gt; 100 km)
       </div>
+      <div class="tamanos" id="tamanos"></div>
     </section>
 
     <aside class="card" id="panel" aria-live="polite">
@@ -118,7 +121,9 @@ const eventos = TERREMOTOS.map(e => {
 const claseProf = p => p < 50 ? 'sup' : (p <= 100 ? 'med' : 'prof');
 const nombreClase = { sup: 'Superficial', med: 'Intermedio', prof: 'Profundo' };
 const colorClase = { sup: 'var(--sup)', med: 'var(--med)', prof: 'var(--prof)' };
-const radio = mag => 3.5 + (mag - 7) * 6;
+// Área proporcional a (energía)^(1/3): cada +1 de magnitud multiplica la energía por ~32 y el área por ~3,2.
+// Con área proporcional a la energía completa, M9,5 sería ~75 veces más ancho que M7 y taparía el gráfico.
+const radio = mag => 4 * Math.pow(10, 0.25 * (mag - 7));
 
 // ---------- Titular (vista general) ----------
 (function titular() {
@@ -194,10 +199,10 @@ function dibujar() {
     const c = el('circle', {
       class: 'q' + (estado.sel === e ? ' sel' : ''),
       cx: xDe(e.t), cy: yDe(e.lat), r: radio(e.mag),
-      fill: colorClase[claseProf(e.prof)],
       tabindex: 0, role: 'button',
       'aria-label': `${e.lugar}, ${e.fecha}, magnitud ${e.mag}, profundidad ${Math.round(e.prof)} kilómetros`
     });
+    c.style.setProperty('--c', colorClase[claseProf(e.prof)]);
     c.addEventListener('mouseenter', () => mostrarDetalle(e));
     c.addEventListener('focus', () => mostrarDetalle(e));
     c.addEventListener('click', () => { estado.sel = e; mostrarDetalle(e); sonar(e); marcar(); });
@@ -367,6 +372,22 @@ document.getElementById('hasta').addEventListener('input', ev => {
 [['cSup', 'sup'], ['cMed', 'med'], ['cProf', 'prof']].forEach(([id, k]) =>
   document.getElementById(id).addEventListener('change', ev => { estado[k] = ev.target.checked; refrescar(); })
 );
+
+// ---------- Leyenda de tamaños ----------
+(function leyendaTamanos() {
+  const ref = [7, 8, 9];
+  const cont = document.getElementById('tamanos');
+  cont.append('Tamaño (área) = magnitud:');
+  ref.forEach(m => {
+    const r = radio(m);
+    const s = el('svg', { width: 2 * r + 2, height: 2 * r + 2, viewBox: `0 0 ${2 * r + 2} ${2 * r + 2}`, 'aria-hidden': 'true' });
+    s.appendChild(el('circle', { cx: r + 1, cy: r + 1, r, fill: '#6b7280', 'fill-opacity': 0.35, stroke: '#6b7280', 'stroke-width': 1.5 }));
+    const item = document.createElement('span');
+    item.append(s, ` M${m}`);
+    cont.appendChild(item);
+  });
+  cont.append('Cada +1 de magnitud: ~32 veces más energía, ~3 veces más área.');
+})();
 
 dibujar();
 </script>

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terremotos de Chile desde 1900</title>
+<style>
+  :root {
+    --bg: #faf8f5;
+    --ink: #1f2430;
+    --muted: #6b7280;
+    --grid: #e4e0d8;
+    --sup: #e8590c;   /* superficial */
+    --med: #9c36b5;   /* intermedio */
+    --prof: #1c3d8f;  /* profundo */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.45;
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: clamp(1.5rem, 3.4vw, 2.2rem); line-height: 1.15; margin: 0 0 8px; }
+  .sub { color: var(--muted); max-width: 70ch; margin: 0 0 20px; }
+  .layout { display: grid; grid-template-columns: 1fr 270px; gap: 20px; align-items: start; }
+  @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
+  .card { background: #fff; border: 1px solid var(--grid); border-radius: 10px; padding: 12px; }
+  svg { width: 100%; height: auto; display: block; }
+  .controls { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-bottom: 14px; font-size: 0.9rem; align-items: center; }
+  .controls label { display: flex; flex-direction: column; gap: 2px; }
+  .controls input[type=range] { width: 150px; }
+  .chk { flex-direction: row !important; align-items: center; gap: 6px !important; }
+  button {
+    font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--ink);
+    background: var(--ink); color: #fff; cursor: pointer;
+  }
+  button.sec { background: #fff; color: var(--ink); }
+  button:focus-visible, circle:focus-visible { outline: 3px solid #2f6fed; outline-offset: 2px; }
+  #panel h2 { font-size: 1.05rem; margin: 0 0 6px; }
+  #panel dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 0.92rem; }
+  #panel dt { color: var(--muted); }
+  #panel dd { margin: 0; }
+  .hint { color: var(--muted); font-size: 0.85rem; margin-top: 10px; }
+  .legend { font-size: 0.85rem; color: var(--muted); margin-top: 12px; }
+  .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; vertical-align: baseline; }
+  .tick text { font-size: 11px; fill: var(--muted); }
+  .axis-label { font-size: 11px; fill: var(--muted); }
+  circle.q { fill-opacity: 0.72; stroke: #fff; stroke-width: 1; cursor: pointer; transition: stroke-width .1s; }
+  circle.q:hover, circle.q.sel { stroke: var(--ink); stroke-width: 2; }
+  circle.q.sonando { stroke: var(--ink); stroke-width: 3; }
+  .lbl { font-size: 12px; font-weight: 600; fill: var(--ink); }
+  #playhead { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  #status { font-size: 0.9rem; color: var(--muted); min-height: 1.3em; }
+  .fuente { margin-top: 24px; font-size: 0.82rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="titular"></h1>
+  <p class="sub" id="bajada"></p>
+
+  <div class="layout">
+    <section class="card" aria-label="Gráfico de terremotos">
+      <div class="controls">
+        <button id="btnPlay">▶ Escuchar la historia</button>
+        <button id="btnStop" class="sec" hidden>■ Detener</button>
+        <label>Magnitud mínima: <b id="vMag">7.0</b>
+          <input id="minMag" type="range" min="7" max="9" step="0.1" value="7">
+        </label>
+        <label>Desde: <b id="vDesde">1900</b>
+          <input id="desde" type="range" min="1900" max="2020" step="1" value="1900">
+        </label>
+        <label>Hasta: <b id="vHasta">2026</b>
+          <input id="hasta" type="range" min="1910" max="2026" step="1" value="2026">
+        </label>
+        <label class="chk"><input type="checkbox" id="cSup" checked> Superficial</label>
+        <label class="chk"><input type="checkbox" id="cMed" checked> Intermedio</label>
+        <label class="chk"><input type="checkbox" id="cProf" checked> Profundo</label>
+      </div>
+      <div id="status" aria-live="polite"></div>
+      <svg id="chart" viewBox="0 0 1000 540" role="img"
+           aria-label="Terremotos de magnitud 7 o más en Chile: año en el eje horizontal, latitud en el vertical"></svg>
+      <div class="legend">
+        Tamaño = magnitud · Color =
+        <span class="dot" style="background:var(--sup)"></span>superficial (&lt; 50 km)
+        <span class="dot" style="background:var(--med)"></span>intermedio (50–100 km)
+        <span class="dot" style="background:var(--prof)"></span>profundo (&gt; 100 km)
+      </div>
+    </section>
+
+    <aside class="card" id="panel" aria-live="polite">
+      <h2>Detalle</h2>
+      <p class="hint" id="panelVacio">Pasa el cursor por un círculo para ver sus datos. Haz clic para escucharlo.</p>
+      <dl id="datos" hidden>
+        <dt>Lugar</dt><dd id="dLugar"></dd>
+        <dt>Fecha</dt><dd id="dFecha"></dd>
+        <dt>Magnitud</dt><dd id="dMag"></dd>
+        <dt>Profundidad</dt><dd id="dProf"></dd>
+        <dt>Tipo</dt><dd id="dTipo"></dd>
+      </dl>
+      <p class="hint"><b>Cómo suena:</b> más grave y más largo = mayor magnitud. Timbre áspero = superficial; tono liso = intermedio; tono sordo y lejano = profundo.</p>
+    </aside>
+  </div>
+
+  <p class="fuente">Datos: catálogo de terremotos del USGS (Servicio Geológico de EE. UU.), eventos de magnitud 7 o más entre 1900 y 2026 ubicados en Chile. Detalle del procesamiento en el README.</p>
+</main>
+
+<script src="data.js"></script>
+<script>
+// ---------- Datos ----------
+const eventos = TERREMOTOS.map(e => {
+  const [y, m, d] = e.fecha.split('-').map(Number);
+  const t = y + ((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 1)) / 86400000) / 365.25;
+  return { ...e, t, anio: y };
+});
+
+const claseProf = p => p < 50 ? 'sup' : (p <= 100 ? 'med' : 'prof');
+const nombreClase = { sup: 'Superficial', med: 'Intermedio', prof: 'Profundo' };
+const colorClase = { sup: 'var(--sup)', med: 'var(--med)', prof: 'var(--prof)' };
+const radio = mag => 3.5 + (mag - 7) * 6;
+
+// ---------- Titular (vista general) ----------
+(function titular() {
+  const mayor = eventos.reduce((a, b) => (b.mag > a.mag ? b : a));
+  document.getElementById('titular').textContent =
+    `${eventos.length} terremotos de magnitud 7 o más han golpeado Chile desde 1900, de Arica a Punta Arenas`;
+  document.getElementById('bajada').textContent =
+    `El mayor, en ${mayor.lugar} en ${mayor.anio} (magnitud ${mayor.mag}), es el más fuerte jamás registrado en el mundo. ` +
+    `La gran mayoría se concentra entre Arica y Concepción; al sur de Valdivia hubo solo cuatro.`;
+})();
+
+// ---------- Gráfico ----------
+const svg = document.getElementById('chart');
+const NS = 'http://www.w3.org/2000/svg';
+const W = 1000, H = 540, M = { l: 100, r: 20, t: 16, b: 36 };
+const iw = W - M.l - M.r, ih = H - M.t - M.b;
+const LAT_N = -17, LAT_S = -56;
+const ciudades = [
+  ['Arica', -18.48], ['Iquique', -20.21], ['Antofagasta', -23.65], ['Copiapó', -27.37],
+  ['La Serena', -29.9], ['Valparaíso', -33.05], ['Concepción', -36.83], ['Valdivia', -39.81],
+  ['Puerto Montt', -41.47], ['Punta Arenas', -53.16]
+];
+
+const estado = { minMag: 7, desde: 1900, hasta: 2026, sup: true, med: true, prof: true, sel: null };
+let animando = null;
+
+function el(nombre, attrs = {}, texto) {
+  const n = document.createElementNS(NS, nombre);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (texto !== undefined) n.textContent = texto;
+  return n;
+}
+
+const xDe = t => M.l + ((t - estado.desde) / (estado.hasta + 1 - estado.desde)) * iw;
+const yDe = lat => M.t + ((lat - LAT_N) / (LAT_S - LAT_N)) * ih;
+
+function visibles() {
+  return eventos.filter(e =>
+    e.mag >= estado.minMag && e.anio >= estado.desde && e.anio <= estado.hasta && estado[claseProf(e.prof)]
+  );
+}
+
+function dibujar() {
+  svg.innerHTML = '';
+  const g = el('g');
+  svg.appendChild(g);
+
+  // líneas horizontales y etiquetas de ciudades (contexto geográfico)
+  ciudades.forEach(([nombre, lat]) => {
+    const y = yDe(lat);
+    g.appendChild(el('line', { x1: M.l, x2: W - M.r, y1: y, y2: y, stroke: '#e4e0d8', 'stroke-width': 1 }));
+    const t = el('g', { class: 'tick' });
+    t.appendChild(el('text', { x: M.l - 8, y: y + 4, 'text-anchor': 'end' }, nombre));
+    g.appendChild(t);
+  });
+  g.appendChild(el('text', { class: 'axis-label', x: 4, y: M.t + 4 }, '↑ Norte'));
+  g.appendChild(el('text', { class: 'axis-label', x: 4, y: H - M.b - 2 }, '↓ Sur'));
+
+  // eje de años
+  const span = estado.hasta + 1 - estado.desde;
+  const paso = span > 60 ? 10 : span > 30 ? 5 : span > 12 ? 2 : 1;
+  for (let a = Math.ceil(estado.desde / paso) * paso; a <= estado.hasta + 1; a += paso) {
+    const x = xDe(a);
+    g.appendChild(el('line', { x1: x, x2: x, y1: M.t, y2: H - M.b, stroke: '#efece5', 'stroke-width': 1 }));
+    const t = el('g', { class: 'tick' });
+    t.appendChild(el('text', { x, y: H - M.b + 18, 'text-anchor': 'middle' }, a));
+    g.appendChild(t);
+  }
+
+  // círculos: los grandes primero para que los chicos queden encima
+  const vis = visibles().sort((a, b) => b.mag - a.mag);
+  vis.forEach(e => {
+    const c = el('circle', {
+      class: 'q' + (estado.sel === e ? ' sel' : ''),
+      cx: xDe(e.t), cy: yDe(e.lat), r: radio(e.mag),
+      fill: colorClase[claseProf(e.prof)],
+      tabindex: 0, role: 'button',
+      'aria-label': `${e.lugar}, ${e.fecha}, magnitud ${e.mag}, profundidad ${Math.round(e.prof)} kilómetros`
+    });
+    c.addEventListener('mouseenter', () => mostrarDetalle(e));
+    c.addEventListener('focus', () => mostrarDetalle(e));
+    c.addEventListener('click', () => { estado.sel = e; mostrarDetalle(e); sonar(e); marcar(); });
+    c.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); c.dispatchEvent(new Event('click')); } });
+    c._e = e;
+    g.appendChild(c);
+  });
+
+  // etiquetas para los mayores
+  vis.filter(e => e.mag >= 8.5).forEach(e => {
+    const x = xDe(e.t), y = yDe(e.lat);
+    const derecha = x < W - 150;
+    g.appendChild(el('text', {
+      class: 'lbl', x: derecha ? x + radio(e.mag) + 6 : x - radio(e.mag) - 6, y: y + 4,
+      'text-anchor': derecha ? 'start' : 'end'
+    }, `${e.anio} · M${e.mag}`));
+  });
+
+  const ph = el('line', { id: 'playhead', y1: M.t, y2: H - M.b, x1: -10, x2: -10 });
+  g.appendChild(ph);
+
+  document.getElementById('status').textContent =
+    `${vis.length} de ${eventos.length} terremotos con los filtros actuales`;
+}
+
+function marcar() {
+  svg.querySelectorAll('circle.q').forEach(c => c.classList.toggle('sel', c._e === estado.sel));
+}
+
+function mostrarDetalle(e) {
+  document.getElementById('panelVacio').hidden = true;
+  document.getElementById('datos').hidden = false;
+  document.getElementById('dLugar').textContent = e.lugar;
+  document.getElementById('dFecha').textContent = new Date(e.fecha + 'T12:00:00Z')
+    .toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  document.getElementById('dMag').textContent = e.mag.toFixed(1);
+  document.getElementById('dProf').textContent = `${Math.round(e.prof)} km`;
+  document.getElementById('dTipo').textContent = nombreClase[claseProf(e.prof)];
+}
+
+// ---------- Sonificación ----------
+// Magnitud -> tono (más grave = más fuerte) y duración (más largo = más fuerte).
+// Profundidad -> timbre (áspero superficial, liso intermedio, sordo y lejano profundo).
+let ctx = null, ruido = null;
+
+function iniciarAudio() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const len = ctx.sampleRate * 3;
+    ruido = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = ruido.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  }
+  if (ctx.state === 'suspended') ctx.resume();
+}
+
+function sonar(e) {
+  iniciarAudio();
+  const clase = claseProf(e.prof);
+  const f = 180 * Math.pow(2, -(e.mag - 7) * 0.8);   // 7.0 -> 180 Hz, 9.5 -> 45 Hz
+  const dur = 0.5 + (e.mag - 7) * 1.3;                // 7.0 -> 0.5 s, 9.5 -> 3.75 s
+  const pico = 0.12 + (e.mag - 7) * 0.05;             // el volumen casi no cambia: lo cargan tono, duración y timbre
+  const t0 = ctx.currentTime;
+  const ataque = clase === 'prof' ? 0.25 : clase === 'med' ? 0.08 : 0.02;
+
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0.0001, t0);
+  master.gain.exponentialRampToValueAtTime(pico, t0 + ataque);
+  master.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  master.connect(ctx.destination);
+
+  const osc = ctx.createOscillator();
+  osc.type = clase === 'sup' ? 'sawtooth' : clase === 'med' ? 'triangle' : 'sine';
+  osc.frequency.setValueAtTime(f * 1.15, t0);
+  osc.frequency.exponentialRampToValueAtTime(f, t0 + Math.min(dur, 0.6));
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = clase === 'sup' ? f * 6 : clase === 'med' ? f * 3 : f * 1.5;
+  osc.connect(lp); lp.connect(master);
+  osc.start(t0); osc.stop(t0 + dur + 0.05);
+
+  if (clase !== 'prof') {   // retumbo de ruido en los eventos más superficiales
+    const n = ctx.createBufferSource();
+    n.buffer = ruido;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'lowpass';
+    bp.frequency.value = f * 4;
+    const gn = ctx.createGain();
+    gn.gain.value = clase === 'sup' ? 0.9 : 0.3;
+    n.connect(bp); bp.connect(gn); gn.connect(master);
+    n.start(t0, 0, Math.min(dur + 0.05, 3));
+  }
+
+  const c = [...svg.querySelectorAll('circle.q')].find(x => x._e === e);
+  if (c) { c.classList.add('sonando'); setTimeout(() => c.classList.remove('sonando'), dur * 1000); }
+}
+
+// ---------- Reproducción cronológica ----------
+const btnPlay = document.getElementById('btnPlay');
+const btnStop = document.getElementById('btnStop');
+
+function detener() {
+  if (animando) cancelAnimationFrame(animando.raf);
+  animando = null;
+  btnStop.hidden = true;
+  btnPlay.hidden = false;
+  const ph = document.getElementById('playhead');
+  if (ph) { ph.setAttribute('x1', -10); ph.setAttribute('x2', -10); }
+  document.getElementById('status').textContent =
+    `${visibles().length} de ${eventos.length} terremotos con los filtros actuales`;
+}
+
+function reproducir() {
+  detener();
+  iniciarAudio();
+  const lista = visibles().sort((a, b) => a.t - b.t);
+  if (!lista.length) return;
+  const t0 = estado.desde, t1 = estado.hasta + 1;
+  const total = Math.min(45, Math.max(10, (t1 - t0) * 0.36)) * 1000;
+  const inicio = performance.now();
+  let i = 0;
+  btnPlay.hidden = true; btnStop.hidden = false;
+
+  const paso = ahora => {
+    const prog = Math.min((ahora - inicio) / total, 1);
+    const tAct = t0 + prog * (t1 - t0);
+    const x = xDe(tAct);
+    const ph = document.getElementById('playhead');
+    ph.setAttribute('x1', x); ph.setAttribute('x2', x);
+    while (i < lista.length && lista[i].t <= tAct) {
+      sonar(lista[i]);
+      mostrarDetalle(lista[i]);
+      document.getElementById('status').textContent = `Año ${lista[i].anio}…`;
+      i++;
+    }
+    if (prog < 1) animando.raf = requestAnimationFrame(paso);
+    else setTimeout(detener, 3000);
+  };
+  animando = { raf: requestAnimationFrame(paso) };
+}
+
+btnPlay.addEventListener('click', reproducir);
+btnStop.addEventListener('click', detener);
+
+// ---------- Filtros ----------
+function refrescar() { detener(); dibujar(); }
+
+document.getElementById('minMag').addEventListener('input', ev => {
+  estado.minMag = Number(ev.target.value);
+  document.getElementById('vMag').textContent = estado.minMag.toFixed(1);
+  refrescar();
+});
+document.getElementById('desde').addEventListener('input', ev => {
+  let v = Number(ev.target.value);
+  if (v >= estado.hasta - 5) { v = estado.hasta - 5; ev.target.value = v; }
+  estado.desde = v;
+  document.getElementById('vDesde').textContent = v;
+  refrescar();
+});
+document.getElementById('hasta').addEventListener('input', ev => {
+  let v = Number(ev.target.value);
+  if (v <= estado.desde + 5) { v = estado.desde + 5; ev.target.value = v; }
+  estado.hasta = v;
+  document.getElementById('vHasta').textContent = v;
+  refrescar();
+});
+[['cSup', 'sup'], ['cMed', 'med'], ['cProf', 'prof']].forEach(([id, k]) =>
+  document.getElementById(id).addEventListener('change', ev => { estado[k] = ev.target.checked; refrescar(); })
+);
+
+dibujar();
+</script>
+</body>
+</html>

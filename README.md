@@ -95,3 +95,11 @@ git push -u origin main --tags
 - **Qué cambió:** el tono sigue siendo siempre el mismo (220 Hz). La magnitud cambia varias capas del timbre a la vez: filtro de agudos (de 12.000 Hz en M7 a 250 Hz en M9,5), filtro de graves, realce de agudos en los chicos y de graves en los grandes, un chasquido agudo al inicio solo en los chicos, ruido (casi nada en los chicos, mucho retumbo grave en los grandes) y aspereza por temblor rápido en los grandes.
 - **Medición:** el centroide espectral baja de ~5.800 Hz (M7, 62 % de la energía sobre 1.500 Hz) a ~250 Hz (M9,5, 0 %); el pico espectral queda en ~223 Hz en todas las magnitudes. Los picos de volumen no superan 0,92.
 - **Motivo:** al escuchar, la diferencia entre magnitudes no se percibía.
+
+### Sonido con Tone.js, escala ajustable y reproducción controlable (posterior al tag v2)
+
+- **Sonido:** se usa Tone.js (la librería del curso). La magnitud se codifica con el tono, muy agudo en M7 (≈2000 Hz) y muy grave en M9,5 (≈45 Hz), y con la duración (0,35 s a 2,75 s); los grandes suman una onda con armónicos, un golpe grave y ruido de retumbo. La profundidad se oye en el ataque y en la aspereza; la latitud, en el estéreo. Respaldo: si Tone.js no carga, se usa el motor Web Audio anterior.
+- **Reproducción:** un terremoto por vez, con control de velocidad (0,5 a 4 s por terremoto, ajustable en vivo) y control de sincronía sonido-gráfico para compensar la latencia de la salida de audio (por ejemplo, audífonos Bluetooth).
+- **Escala:** control de ancho del gráfico (1× a 4×, por defecto 2×); los círculos mantienen su tamaño y se separan más; los nombres de las ciudades quedan fijos a la izquierda.
+- **Separación:** el orden de izquierda a derecha es siempre el orden en el tiempo (la línea de reproducción nunca retrocede); separación mínima de 16 px entre círculos; las etiquetas buscan un lugar donde no tapen círculos; la posición exacta de los círculos desplazados se muestra al pasar el cursor.
+- **Motivo:** al probarlo, el sonido no era representativo, iba demasiado rápido, los círculos seguían solapándose y la línea de reproducción se devolvía.

@@ -52,6 +52,12 @@
   circle.q:hover, circle.q.sel { stroke: var(--ink); stroke-width: 2; }
   circle.q.sonando { stroke: var(--ink); stroke-width: 3; }
   .lbl { font-size: 12px; font-weight: 600; fill: var(--ink); }
+  .lienzoWrap { position: relative; }
+  #ejeY { position: absolute; left: 0; top: 0; width: 96px; height: 100%; pointer-events: none; }
+  #ejeY span { position: absolute; right: 8px; font-size: 11px; color: var(--muted); transform: translateY(-50%); white-space: nowrap; }
+  #lienzo { overflow-x: auto; margin-left: 96px; }
+  .guia { visibility: hidden; pointer-events: none; }
+  .guia.on { visibility: visible; }
   #playhead { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 4 3; }
   #status { font-size: 0.9rem; color: var(--muted); min-height: 1.3em; }
   .fuente { margin-top: 24px; font-size: 0.82rem; color: var(--muted); }
@@ -77,13 +83,27 @@
         <label>Hasta: <b id="vHasta">2026</b>
           <input id="hasta" type="range" min="1910" max="2026" step="1" value="2026">
         </label>
+        <label>Ancho del gráfico: <b id="vZoom">2×</b>
+          <input id="zoom" type="range" min="1" max="4" step="0.5" value="2">
+        </label>
+        <label>Tiempo por terremoto: <b id="vRitmo">1,5 s</b>
+          <input id="ritmo" type="range" min="0.5" max="4" step="0.25" value="1.5">
+        </label>
+        <label>Sincronía sonido-gráfico: <b id="vSync">0 ms</b>
+          <input id="sync" type="range" min="0" max="600" step="25" value="0">
+        </label>
         <label class="chk"><input type="checkbox" id="cSup" checked> Superficial</label>
         <label class="chk"><input type="checkbox" id="cMed" checked> Intermedio</label>
         <label class="chk"><input type="checkbox" id="cProf" checked> Profundo</label>
       </div>
       <div id="status" aria-live="polite"></div>
-      <svg id="chart" viewBox="0 0 1000 640" role="img"
-           aria-label="Terremotos de magnitud 7 o más en Chile: año en el eje horizontal, latitud en el vertical"></svg>
+      <div class="lienzoWrap">
+        <div id="ejeY" aria-hidden="true"></div>
+        <div id="lienzo">
+          <svg id="chart" viewBox="0 0 1000 640" role="img"
+               aria-label="Terremotos de magnitud 7 o más en Chile: año en el eje horizontal, latitud en el vertical"></svg>
+        </div>
+      </div>
       <div class="legend">
         Tamaño = magnitud · Color =
         <span class="dot" style="background:var(--sup)"></span>superficial (&lt; 50 km)
@@ -91,7 +111,7 @@
         <span class="dot" style="background:var(--prof)"></span>profundo (&gt; 100 km)
       </div>
       <div class="tamanos" id="tamanos"></div>
-      <p class="hint">Los círculos que se superponen se separan un poco en horizontal, respetando el orden en el tiempo (el que ocurrió antes queda a la izquierda). El punto gris marca la fecha exacta; la fecha y la hora están en el detalle.</p>
+      <p class="hint">Los círculos que se superponen se separan un poco en horizontal, respetando el orden en el tiempo (el que ocurrió antes queda a la izquierda). Al pasar el cursor por uno desplazado aparece un punto oscuro con su fecha exacta; la fecha y la hora están en el detalle.</p>
     </section>
 
     <aside class="card" id="panel" aria-live="polite">
@@ -104,7 +124,7 @@
         <dt>Profundidad</dt><dd id="dProf"></dd>
         <dt>Tipo</dt><dd id="dTipo"></dd>
       </dl>
-      <p class="hint"><b>Cómo suena:</b> el tono es siempre el mismo; lo que cambia con la magnitud es el timbre: agudo, brillante y delgado = menor magnitud; grave, oscuro y con retumbo = mayor magnitud. Más ruido áspero = más superficial. En audífonos o parlantes estéreo: izquierda = norte, derecha = sur.</p>
+      <p class="hint"><b>Cómo suena:</b> tono muy agudo y breve = menor magnitud; tono muy grave, largo y con retumbo = mayor magnitud. Más aspereza = más superficial. En audífonos o parlantes estéreo: izquierda = norte, derecha = sur.</p>
     </aside>
   </div>
 
@@ -112,6 +132,7 @@
   <p class="fuente">Datos: catálogo de terremotos del USGS (Servicio Geológico de EE. UU.), eventos de magnitud 7 o más entre 1900 y 2026 ubicados en Chile. Detalle del procesamiento en el README.</p>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 <script src="data.js?v=2"></script>
 <script>
 // ---------- Datos ----------
@@ -142,8 +163,10 @@ const radio = mag => 5 * Math.pow(10, 0.28 * (mag - 7));
 // ---------- Gráfico ----------
 const svg = document.getElementById('chart');
 const NS = 'http://www.w3.org/2000/svg';
-const W = 1000, H = 640, M = { l: 100, r: 20, t: 16, b: 36 };
-const iw = W - M.l - M.r, ih = H - M.t - M.b;
+let W = 1000;   // ancho del gráfico en unidades del SVG: crece con el control "Ancho del gráfico"
+const H = 640, M = { l: 8, r: 20, t: 16, b: 36 };
+let iw = W - M.l - M.r;
+const ih = H - M.t - M.b;
 const LAT_N = -17, LAT_S = -56;
 const ciudades = [
   ['Arica', -18.48], ['Iquique', -20.21], ['Antofagasta', -23.65], ['Copiapó', -27.37],
@@ -151,7 +174,7 @@ const ciudades = [
   ['Puerto Montt', -41.47], ['Punta Arenas', -53.16]
 ];
 
-const estado = { minMag: 7, desde: 1900, hasta: 2026, sup: true, med: true, prof: true, sel: null };
+const estado = { zoom: 2, minMag: 7, desde: 1900, hasta: 2026, sup: true, med: true, prof: true, sel: null };
 let animando = null;
 
 function el(nombre, attrs = {}, texto) {
@@ -170,7 +193,12 @@ function visibles() {
   );
 }
 
-const SEPARACION = 14;   // espacio mínimo (px) entre círculos vecinos
+let ultimaPos = new Map(), guias = new Map();
+function mostrarGuia(e, on) {   // punto gris + línea con la posición exacta, solo al pasar el cursor o al seleccionar
+  const g = guias.get(e);
+  if (g) g.forEach(n => n.classList.toggle('on', on || estado.sel === e));
+}
+const SEPARACION = 16;   // espacio mínimo (px) entre círculos vecinos
 // Separa los círculos que se tapan: se desplazan solo en horizontal y respetando el orden en el tiempo
 // (el que ocurrió antes queda a la izquierda). Es aproximado: el punto gris marca la posición exacta
 // y el panel de detalle da la fecha y la hora.
@@ -179,8 +207,14 @@ function posiciones(lista) {
     const x = xDe(e.t);
     return { e, x0: x, x, y: yDe(e.lat), r: radio(e.mag) };
   });
-  for (let it = 0; it < 400; it++) {   // cada par que se tapa se aleja por igual; el que ocurrió antes va a la izquierda
+  for (let it = 0; it < 3000; it++) {   // cada par que se tapa se aleja por igual; el que ocurrió antes va a la izquierda
     let movido = false;
+    // el orden es estricto en TODO el gráfico: un círculo nunca queda a la izquierda de otro que ocurrió antes
+    // (así la línea de reproducción siempre avanza y no se devuelve)
+    for (let i = 0; i + 1 < P.length; i++) {
+      const a = P[i], b = P[i + 1];
+      if (b.x < a.x + 1) { const d = (a.x + 1 - b.x) / 2 + 0.01; a.x -= d; b.x += d; movido = true; }
+    }
     for (let i = 0; i < P.length; i++) {
       for (let j = i + 1; j < P.length; j++) {
         const a = P[i], b = P[j];
@@ -199,7 +233,22 @@ function posiciones(lista) {
   return pos;
 }
 
+// Nombres de las ciudades: quedan fijos a la izquierda aunque el gráfico se desplace al ensancharlo.
+function colocarEjeY() {
+  const eje = document.getElementById('ejeY');
+  eje.innerHTML = '';
+  const k = svg.clientHeight / H;
+  const pon = (texto, y) => { const sp = document.createElement('span'); sp.textContent = texto; sp.style.top = (y * k) + 'px'; eje.appendChild(sp); };
+  ciudades.forEach(([nombre, lat]) => pon(nombre, yDe(lat)));
+  pon('↑ Norte', M.t + 4);
+  pon('↓ Sur', H - M.b - 2);
+}
+window.addEventListener('resize', colocarEjeY);
+
 function dibujar() {
+  W = 1000 * estado.zoom; iw = W - M.l - M.r;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.style.width = (estado.zoom * 100) + '%';
   svg.innerHTML = '';
   const g = el('g');
   svg.appendChild(g);
@@ -208,12 +257,7 @@ function dibujar() {
   ciudades.forEach(([nombre, lat]) => {
     const y = yDe(lat);
     g.appendChild(el('line', { x1: M.l, x2: W - M.r, y1: y, y2: y, stroke: '#e4e0d8', 'stroke-width': 1 }));
-    const t = el('g', { class: 'tick' });
-    t.appendChild(el('text', { x: M.l - 8, y: y + 4, 'text-anchor': 'end' }, nombre));
-    g.appendChild(t);
   });
-  g.appendChild(el('text', { class: 'axis-label', x: 4, y: M.t + 4 }, '↑ Norte'));
-  g.appendChild(el('text', { class: 'axis-label', x: 4, y: H - M.b - 2 }, '↓ Sur'));
 
   // eje de años
   const span = estado.hasta + 1 - estado.desde;
@@ -229,11 +273,14 @@ function dibujar() {
   // círculos: los grandes primero para que los chicos queden encima
   const vis = visibles().sort((a, b) => b.mag - a.mag);
   const pos = posiciones(vis);
+  ultimaPos = pos; guias = new Map();
   vis.forEach(e => {   // marca de la posición exacta de los círculos que se desplazaron
     const o = pos.get(e);
     if (Math.abs(o.x - o.x0) > 3) {
-      g.appendChild(el('line', { x1: o.x0, x2: o.x, y1: o.y, y2: o.y, stroke: '#9aa0a6', 'stroke-width': 1 }));
-      g.appendChild(el('circle', { cx: o.x0, cy: o.y, r: 1.8, fill: '#6b7280' }));
+      const l = el('line', { class: 'guia', x1: o.x0, x2: o.x, y1: o.y, y2: o.y, stroke: '#6b7280', 'stroke-width': 1.5 });
+      const d = el('circle', { class: 'guia', cx: o.x0, cy: o.y, r: 3, fill: '#1f2430' });
+      g.appendChild(l); g.appendChild(d);
+      guias.set(e, [l, d]);
     }
   });
   vis.forEach(e => {
@@ -244,7 +291,8 @@ function dibujar() {
       'aria-label': `${e.lugar}, ${e.fecha}, magnitud ${e.mag}, profundidad ${Math.round(e.prof)} kilómetros`
     });
     c.style.setProperty('--c', colorClase[claseProf(e.prof)]);
-    c.addEventListener('mouseenter', () => mostrarDetalle(e));
+    c.addEventListener('mouseenter', () => { mostrarDetalle(e); mostrarGuia(e, true); });
+    c.addEventListener('mouseleave', () => mostrarGuia(e, false));
     c.addEventListener('focus', () => mostrarDetalle(e));
     c.addEventListener('click', () => { estado.sel = e; mostrarDetalle(e); sonar(e); marcar(); });
     c.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); c.dispatchEvent(new Event('click')); } });
@@ -252,12 +300,28 @@ function dibujar() {
     g.appendChild(c);
   });
 
-  // etiquetas para los mayores
+  // etiquetas para los mayores: cada una busca un lugar donde no tape ningún círculo ni otra etiqueta
+  const ocupados = [];
+  const libre = (x1, y1, x2, y2) => {
+    if (ocupados.some(o => x1 < o[2] && x2 > o[0] && y1 < o[3] && y2 > o[1])) return false;
+    for (const o of pos.values()) {
+      const cx = Math.max(x1, Math.min(o.x, x2)), cy = Math.max(y1, Math.min(o.y, y2));
+      if ((o.x - cx) ** 2 + (o.y - cy) ** 2 < (o.r + 3) ** 2) return false;
+    }
+    return true;
+  };
   vis.filter(e => e.mag >= 8.5).forEach(e => {
-    const x = pos.get(e).x, y = pos.get(e).y;
-    g.appendChild(el('text', {   // sobre el círculo, para no taparlo ni tapar a los vecinos
-      class: 'lbl', x, y: y - radio(e.mag) - 8, 'text-anchor': 'middle'
-    }, `${e.anio} · M${e.mag}`));
+    const o = pos.get(e), x = o.x, y = o.y, r = o.r;
+    const texto = `${e.anio} · M${e.mag}`, w = texto.length * 7.4, h = 14;
+    const opciones = [
+      { x, y: y - r - 8, anchor: 'middle', caja: [x - w / 2, y - r - 8 - h + 3, x + w / 2, y - r - 8 + 3] },           // arriba
+      { x, y: y + r + 16, anchor: 'middle', caja: [x - w / 2, y + r + 3, x + w / 2, y + r + 19] },                      // abajo
+      { x: x + r + 6, y: y + 4, anchor: 'start', caja: [x + r + 4, y - 8, x + r + 8 + w, y + 7] },                      // derecha
+      { x: x - r - 6, y: y + 4, anchor: 'end', caja: [x - r - 8 - w, y - 8, x - r - 4, y + 7] }                         // izquierda
+    ];
+    const op = opciones.find(c => libre(...c.caja)) || opciones[0];
+    ocupados.push(op.caja);
+    g.appendChild(el('text', { class: 'lbl', x: op.x, y: op.y, 'text-anchor': op.anchor }, texto));
   });
 
   const ph = el('line', { id: 'playhead', y1: M.t, y2: H - M.b, x1: -10, x2: -10 });
@@ -265,10 +329,11 @@ function dibujar() {
 
   document.getElementById('status').textContent =
     `${vis.length} de ${eventos.length} terremotos con los filtros actuales`;
+  colocarEjeY();
 }
 
 function marcar() {
-  svg.querySelectorAll('circle.q').forEach(c => c.classList.toggle('sel', c._e === estado.sel));
+  svg.querySelectorAll('circle.q').forEach(c => { c.classList.toggle('sel', c._e === estado.sel); mostrarGuia(c._e, false); });
 }
 
 function mostrarDetalle(e) {
@@ -286,10 +351,11 @@ function mostrarDetalle(e) {
 // Magnitud -> TIMBRE (el tono es siempre el mismo): agudo y brillante = más chico; grave y oscuro, con retumbo y temblor = más grande.
 // Latitud -> posición en el estéreo (norte a la izquierda, sur a la derecha).
 // Profundidad -> timbre (áspero superficial, liso intermedio, sordo y lejano profundo).
-const VERSION_SONIDO = 'sonido-7 (mismo tono; chicos muy agudos)';   // datos: data.js?v=2 (con hora UTC)
+const VERSION_SONIDO = 'sonido-8 (Tone.js: muy agudo = chico, muy grave = grande)';   // v. visual: ancho ajustable   // datos: data.js?v=2 (con hora UTC)
 let ctx = null, ruido = null, bus = null, ultimoInicio = 0;
 
 function iniciarAudio() {
+  if (window.Tone) return Tone.start().then(() => { Tone.context.lookAhead = 0.02; });   // desbloquea el audio con el gesto del usuario; menos adelanto = menos retraso
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     bus = ctx.createDynamicsCompressor();   // evita saturación y que los sonidos simultáneos se tapen entre sí
@@ -306,6 +372,16 @@ function iniciarAudio() {
 document.addEventListener('pointerdown', () => iniciarAudio(), { once: true });
 
 function probarSonido() {
+  if (window.Tone) {
+    Tone.start().then(() => {
+      const sy = new Tone.Synth().toDestination();
+      sy.triggerAttackRelease(440, 0.6);
+      setTimeout(() => sy.dispose(), 1500);
+      document.getElementById('status').textContent =
+        `Tono de prueba enviado (audio: ${Tone.context.state}, Tone.js, ${VERSION_SONIDO}). Si no lo oyes, revisa el volumen y la salida de sonido del computador: el problema no es la página.`;
+    });
+    return;
+  }
   iniciarAudio().then(() => {
     const t0 = ctx.currentTime;
     const o = ctx.createOscillator(), g = ctx.createGain();
@@ -329,10 +405,10 @@ function interpola(x, tabla) {
 }
 
 // enCola = true durante la reproducción cronológica: los eventos casi simultáneos se escalonan para que se distingan.
-function sonar(e, enCola) {
+function sonarBasico(e, enCola) {   // motor de respaldo (Web Audio puro) si Tone.js no carga
   iniciarAudio();
   if (ctx.state !== 'running') {   // el audio aún estaba bloqueado: espera a que se active y reintenta una vez
-    ctx.resume().then(() => { if (ctx.state === 'running') sonar(e, enCola); });
+    ctx.resume().then(() => { if (ctx.state === 'running') sonarBasico(e, enCola); });
     return;
   }
   const clase = claseProf(e.prof);
@@ -425,6 +501,84 @@ function sonar(e, enCola) {
   }
 }
 
+// ---------- Sonido con Tone.js (la librería del curso, cápsula T4) ----------
+// Magnitud -> TONO: muy agudo (2000 Hz) en M7 y muy grave (45 Hz) en M9,5, y también duración: tic breve vs retumbo largo.
+// Profundidad -> cantidad de aspereza (más en lo superficial) y ataque (más lento en lo profundo).
+// Latitud -> estéreo (norte a la izquierda, sur a la derecha).
+let busTone = null, ajusteSync = 0;
+// Retraso entre que se agenda el sonido y se oye: adelanto de Tone.js + latencia del navegador + latencia de la salida (los audífonos Bluetooth suman mucho).
+// El gráfico se retrasa ese tiempo (más el ajuste manual) para que la línea llegue al círculo cuando suena.
+function latenciaMs() {
+  if (!window.Tone) return ajusteSync;
+  const raw = Tone.context.rawContext;
+  return ((Tone.context.lookAhead || 0) + (raw.baseLatency || 0) + (raw.outputLatency || 0)) * 1000 + ajusteSync;
+}
+function sonarTone(e, enCola) {
+  if (Tone.context.state !== 'running') {   // el audio aún estaba bloqueado: se activa con el gesto del usuario y se reintenta
+    Tone.start().then(() => { if (Tone.context.state === 'running') sonarTone(e, enCola); });
+    return;
+  }
+  if (!busTone) busTone = new Tone.Limiter(-3).toDestination();   // evita saturación cuando suenan varios a la vez
+  const clase = claseProf(e.prof);
+  const fuerza = (e.mag - 7) / 2.5;                          // 0 (M7,0) a 1 (M9,5)
+  const f = 2000 * Math.pow(45 / 2000, fuerza);              // 2000 Hz -> 45 Hz (escala logarítmica, como el oído)
+  const dur = 0.35 + 2.4 * fuerza;                           // 0,35 s -> 2,75 s
+  const t = Tone.now();
+  const asp = clase === 'sup' ? 0 : clase === 'med' ? -5 : -10;   // dB de aspereza según la profundidad
+  const nodos = [];
+  const nodo = n => (nodos.push(n), n);
+
+  const pan = nodo(new Tone.Panner(-0.8 + 1.6 * ((e.lat - LAT_N) / (LAT_S - LAT_N)))).connect(busTone);
+
+  // agudo: campana metálica (domina en los chicos)
+  const campana = nodo(new Tone.FMSynth({
+    harmonicity: 3.01, modulationIndex: 7,
+    envelope: { attack: 0.002, decay: Math.max(0.25, dur * 0.8), sustain: 0, release: 0.1 },
+    modulationEnvelope: { attack: 0.002, decay: 0.3, sustain: 0, release: 0.1 },
+    volume: 2 - 36 * fuerza
+  })).connect(pan);
+  campana.triggerAttackRelease(f, dur * 0.5, t);
+
+  // grave: onda rica en armónicos, para que el grave se oiga aunque el parlante sea chico (domina en los grandes)
+  if (fuerza > 0.15) {
+    const filtro = nodo(new Tone.Filter(Math.max(500, f * 10), 'lowpass')).connect(pan);
+    const grave = nodo(new Tone.Synth({
+      oscillator: { type: 'sawtooth' },
+      envelope: { attack: clase === 'prof' ? 0.25 : 0.03, decay: dur, sustain: 0, release: 0.3 },
+      volume: -22 + 18 * fuerza
+    })).connect(filtro);
+    grave.triggerAttackRelease(f, dur, t);
+    const golpe = nodo(new Tone.MembraneSynth({
+      pitchDecay: 0.07, octaves: 2.5,
+      envelope: { attack: 0.004, decay: dur, sustain: 0, release: 0.2 },
+      volume: -28 + 28 * fuerza
+    })).connect(pan);
+    golpe.triggerAttackRelease(Math.max(f, 40), dur, t);
+  }
+
+  // retumbo de ruido en los grandes
+  if (fuerza > 0.3) {
+    const filtroR = nodo(new Tone.Filter(450, 'lowpass')).connect(pan);
+    const ruidoR = nodo(new Tone.NoiseSynth({
+      noise: { type: 'brown' },
+      envelope: { attack: 0.05, decay: dur, sustain: 0, release: 0.3 },
+      volume: -40 + 34 * fuerza + (clase === 'sup' ? 0 : asp)
+    })).connect(filtroR);
+    ruidoR.triggerAttackRelease(dur, t);
+  }
+
+  setTimeout(() => nodos.forEach(n => { try { n.dispose(); } catch (_) {} }), (dur + 2.5) * 1000);
+
+  const c = [...svg.querySelectorAll('circle.q')].find(x => x._e === e);
+  if (c) {
+    const lat = latenciaMs();
+    setTimeout(() => c.classList.add('sonando'), lat);
+    setTimeout(() => c.classList.remove('sonando'), lat + dur * 1000);
+  }
+}
+
+function sonar(e, enCola) { return window.Tone ? sonarTone(e, enCola) : sonarBasico(e, enCola); }
+
 // ---------- Reproducción cronológica ----------
 const btnPlay = document.getElementById('btnPlay');
 const btnStop = document.getElementById('btnStop');
@@ -444,6 +598,13 @@ function detener() {
 // Se emite un tono casi inaudible y se espera un momento antes de partir.
 const ESPERA_AUDIO = 1000;
 function calentarAudio() {
+  if (window.Tone) {
+    const o = new Tone.Oscillator(200, 'sine').toDestination();
+    o.volume.value = -48;
+    o.start().stop('+1.1');
+    setTimeout(() => o.dispose(), 1500);
+    return;
+  }
   const t0 = ctx.currentTime;
   const o = ctx.createOscillator(), g = ctx.createGain();
   o.frequency.value = 200;
@@ -452,13 +613,11 @@ function calentarAudio() {
   o.start(t0); o.stop(t0 + ESPERA_AUDIO / 1000 + 0.1);
 }
 
+let RITMO = 1500;   // ms entre un terremoto y el siguiente (se cambia con el control de velocidad): uno por vez, sin que se pisen
 function reproducir() {
   detener();
   const lista = visibles().sort((a, b) => a.t - b.t);
   if (!lista.length) return;
-  const t0 = estado.desde, t1 = estado.hasta + 1;
-  const total = Math.min(45, Math.max(10, (t1 - t0) * 0.36)) * 1000;
-  let i = 0;
   btnPlay.hidden = true; btnStop.hidden = false;
   document.getElementById('status').textContent = 'Preparando el audio…';
   animando = {};
@@ -469,21 +628,26 @@ function reproducir() {
   });
 
   function arrancar() {
-    const inicio = performance.now();
+    const xs = lista.map(e => (ultimaPos.get(e) || { x: xDe(e.t) }).x);   // la línea recorre los círculos tal como se ven
+    let avance = 0, ultimo = performance.now(), i = 0, iv = 0;   // avance = cuántos terremotos lleva (se puede cambiar la velocidad en vivo)
+    const lienzo = document.getElementById('lienzo');
     const paso = ahora => {
-      const prog = Math.min((ahora - inicio) / total, 1);
-      const tAct = t0 + prog * (t1 - t0);
-      const x = xDe(tAct);
+      avance += (ahora - ultimo) / RITMO; ultimo = ahora;
+      const k = Math.min(Math.floor(avance), lista.length - 1);
+      while (i <= k) { sonar(lista[i]); i++; }   // el sonido se agenda de inmediato
+      const av = Math.max(0, avance - latenciaMs() / RITMO);   // lo que se ve va retrasado lo que tarda en oírse
+      const kv = Math.min(Math.floor(av), lista.length - 1);
+      while (iv <= kv) {
+        mostrarDetalle(lista[iv]);
+        document.getElementById('status').textContent = `Año ${lista[iv].anio}… (${iv + 1} de ${lista.length})`;
+        iv++;
+      }
+      const x = kv < lista.length - 1 ? xs[kv] + (xs[kv + 1] - xs[kv]) * (av - kv) : xs[kv];
       const ph = document.getElementById('playhead');
       ph.setAttribute('x1', x); ph.setAttribute('x2', x);
-      while (i < lista.length && lista[i].t <= tAct) {
-        sonar(lista[i], true);
-        mostrarDetalle(lista[i]);
-        document.getElementById('status').textContent = `Año ${lista[i].anio}…`;
-        i++;
-      }
-      if (prog < 1) animando.raf = requestAnimationFrame(paso);
-      else setTimeout(detener, 3000);
+      lienzo.scrollLeft = x * (svg.clientWidth / W) - lienzo.clientWidth / 2;   // el gráfico acompaña a la línea
+      if (av < lista.length) animando.raf = requestAnimationFrame(paso);
+      else setTimeout(detener, 2500);
     };
     animando.raf = requestAnimationFrame(paso);
   }
@@ -495,6 +659,19 @@ btnStop.addEventListener('click', detener);
 // ---------- Filtros ----------
 function refrescar() { detener(); dibujar(); }
 
+document.getElementById('zoom').addEventListener('input', ev => {
+  estado.zoom = Number(ev.target.value);
+  document.getElementById('vZoom').textContent = estado.zoom.toString().replace('.', ',') + '×';
+  refrescar();
+});
+document.getElementById('sync').addEventListener('input', ev => {
+  ajusteSync = Number(ev.target.value);
+  document.getElementById('vSync').textContent = ajusteSync + ' ms';
+});
+document.getElementById('ritmo').addEventListener('input', ev => {
+  RITMO = Number(ev.target.value) * 1000;
+  document.getElementById('vRitmo').textContent = Number(ev.target.value).toString().replace('.', ',') + ' s';
+});
 document.getElementById('minMag').addEventListener('input', ev => {
   estado.minMag = Number(ev.target.value);
   document.getElementById('vMag').textContent = estado.minMag.toFixed(1);

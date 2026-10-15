@@ -119,3 +119,16 @@ git push -u origin main --tags
 
 - **Qué cambió:** las etiquetas de los años son más grandes y en negrita, la primera ya no se corta, y al ensanchar el gráfico se rotulan más años (cada 5 años a 4×, cada año a 8×); el ancho mínimo del gráfico pasa a 2× (con menos no caben 66 terremotos separados 24 px).
 - **Motivo:** al ensanchar el gráfico los años quedaron diminutos y el primero aparecía cortado ("900").
+
+### V3 — sismograma y mapa (rediseño tras la R1)
+
+- **Feedback recibido en la R1 (resumen):** hacer la visualización más intuitiva y con menos texto; sonido y contexto visual más relacionados con terremotos; resumir el título; dejar los datos del sonido como etiqueta; mostrar la información del terremoto al pasar el cursor; los círculos no distinguen bien las magnitudes; la barra de controles superior repetía lo que ya hacía el scroll horizontal.
+- **Qué cambió:**
+  - La magnitud pasa de ser el tamaño de un círculo a la **altura de una barra** (sismograma): el eje horizontal es el tiempo y el vertical la magnitud.
+  - Se agregó un **mapa de Chile** con todos los epicentros; el terremoto que se señala o suena se resalta con una onda que se expande.
+  - El detalle del terremoto aparece **al pasar el cursor** (ya no hay panel lateral).
+  - Título resumido; se quitaron los controles de años y de ancho; el leyenda y los filtros de profundidad son lo mismo (casillas con su color); los ajustes de sonido quedaron dentro de "Ajustes".
+  - **Sonido:** un golpe seco y un retumbo de ruido filtrado, más crujido de roca al inicio. La magnitud cambia el tono (de ~200 Hz a ~40 Hz), la duración, el oscurecimiento del retumbo y el temblor; la profundidad, el ataque y la aspereza; la latitud, el estéreo.
+- **Qué se descartó:** codificar la magnitud con una escala de color verde-rojo (el color no tiene orden y el rojo-verde es problemático para el daltonismo; el color queda para la profundidad).
+- **Medición:** en una ventana ancha (gráfico de 1188 px) el desplazamiento medio de una barra respecto de su fecha exacta es de ~1,3 años (máx. ~5,7 en el grupo de 1960); con 728 px sube a ~4,4 años; al filtrar por magnitud casi no hay desplazamiento. En la reproducción completa: 66 sonidos, 0 inversiones de orden, separación mínima de ~490 ms. Tono dominante medido: ~199 Hz (M7) a ~41 Hz (M9,5).
+- **Limitaciones:** la posición horizontal de algunas barras es aproximada (al pasar el cursor se ve la fecha exacta); el eje vertical parte en M6,6 para que los M7 tengan barra visible; el sonido no está validado con usuarios.

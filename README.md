@@ -108,3 +108,9 @@ git push -u origin main --tags
 
 - **Qué cambió:** como máximo un terremoto por cuadro y un tiempo mínimo entre sonidos (si el navegador se atrasa, el tiempo se detiene en vez de disparar varios de golpe); cada sonido desvanece al anterior; escala del gráfico por defecto 3× (hasta 6×) y separación mínima de 20 px entre círculos.
 - **Motivo:** en una prueba el segundo y el tercer sonido salieron con 21 ms de diferencia (se oían encimados o en desorden). Tras la corrección, en una reproducción completa la separación mínima fue de ~500 ms con 0 inversiones de orden.
+
+### Separación horizontal entre terremotos consecutivos (posterior al tag v2)
+
+- **Qué cambió:** dos terremotos consecutivos en el tiempo quedan siempre al menos 24 px separados en horizontal, aunque estén lejos en latitud, para que el orden cronológico se lea de izquierda a derecha y la marca de reproducción no parezca devolverse; escala por defecto 4× (hasta 8×).
+- **Medición:** en los anchos 3×, 4×, 6× y 8×: 0 retrocesos de orden, 0 círculos solapados y paso mínimo de 24 px. Con 4×, el mayor desplazamiento respecto de la fecha exacta es de ~3,8 años; con 8×, ~1,7 años.
+- **Motivo:** en la reproducción, dos terremotos seguidos podían quedar a 1 px en horizontal (y muy lejos en vertical), y se veía como si la marca saltara hacia atrás.

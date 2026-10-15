@@ -83,8 +83,8 @@
         <label>Hasta: <b id="vHasta">2026</b>
           <input id="hasta" type="range" min="1910" max="2026" step="1" value="2026">
         </label>
-        <label>Ancho del gráfico: <b id="vZoom">3×</b>
-          <input id="zoom" type="range" min="1" max="6" step="0.5" value="3">
+        <label>Ancho del gráfico: <b id="vZoom">4×</b>
+          <input id="zoom" type="range" min="1" max="8" step="0.5" value="4">
         </label>
         <label>Tiempo por terremoto: <b id="vRitmo">1,5 s</b>
           <input id="ritmo" type="range" min="0.5" max="4" step="0.25" value="1.5">
@@ -174,7 +174,7 @@ const ciudades = [
   ['Puerto Montt', -41.47], ['Punta Arenas', -53.16]
 ];
 
-const estado = { zoom: 3, minMag: 7, desde: 1900, hasta: 2026, sup: true, med: true, prof: true, sel: null };
+const estado = { zoom: 4, minMag: 7, desde: 1900, hasta: 2026, sup: true, med: true, prof: true, sel: null };
 let animando = null;
 
 function el(nombre, attrs = {}, texto) {
@@ -198,7 +198,8 @@ function mostrarGuia(e, on) {   // punto gris + línea con la posición exacta, 
   const g = guias.get(e);
   if (g) g.forEach(n => n.classList.toggle('on', on || estado.sel === e));
 }
-const SEPARACION = 20;   // espacio mínimo (px) entre círculos vecinos
+const SEPARACION = 20;   // espacio mínimo (px) entre círculos que se tocan
+const PASO_MIN = 24;     // separación horizontal mínima entre dos terremotos consecutivos en el tiempo, aunque estén lejos en latitud: el orden se lee de izquierda a derecha   // espacio mínimo (px) entre círculos vecinos
 // Separa los círculos que se tapan: se desplazan solo en horizontal y respetando el orden en el tiempo
 // (el que ocurrió antes queda a la izquierda). Es aproximado: el punto gris marca la posición exacta
 // y el panel de detalle da la fecha y la hora.
@@ -213,7 +214,7 @@ function posiciones(lista) {
     // (así la línea de reproducción siempre avanza y no se devuelve)
     for (let i = 0; i + 1 < P.length; i++) {
       const a = P[i], b = P[i + 1];
-      if (b.x < a.x + 1) { const d = (a.x + 1 - b.x) / 2 + 0.01; a.x -= d; b.x += d; movido = true; }
+      if (b.x < a.x + PASO_MIN) { const d = (a.x + PASO_MIN - b.x) / 2 + 0.01; a.x -= d; b.x += d; movido = true; }
     }
     for (let i = 0; i < P.length; i++) {
       for (let j = i + 1; j < P.length; j++) {

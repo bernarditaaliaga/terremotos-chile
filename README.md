@@ -70,3 +70,8 @@ git push -u origin main --tags
 
 - **Qué cambió:** el tono pasó de 180–45 Hz a 260–100 Hz según la magnitud (sigue siendo más grave = más fuerte), se agregó un armónico una octava arriba y se subió un poco el volumen base.
 - **Motivo:** en una prueba de escucha en un notebook casi no se oía el sonido de los terremotos grandes (45 Hz está bajo lo que reproducen los parlantes pequeños).
+
+### Ajuste de sonido 2 (posterior al tag v2)
+
+- **Qué cambió:** el contraste entre magnitudes es mayor (tono 320–90 Hz, duración 0,4–4,15 s, y retumbo, brillo y temblor que crecen con la magnitud). La latitud ahora se oye en el estéreo (norte a la izquierda, sur a la derecha). En la reproducción cronológica los eventos casi simultáneos se escalonan 0,5 s, y se agregó un compresor para que no se tapen ni saturen.
+- **Motivo:** al escuchar, los terremotos solapados no se distinguían y era difícil percibir la diferencia entre magnitudes grandes y pequeñas.

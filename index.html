@@ -103,7 +103,7 @@
         <dt>Profundidad</dt><dd id="dProf"></dd>
         <dt>Tipo</dt><dd id="dTipo"></dd>
       </dl>
-      <p class="hint"><b>Cómo suena:</b> más grave y más largo = mayor magnitud. Timbre áspero = superficial; tono liso = intermedio; tono sordo y lejano = profundo.</p>
+      <p class="hint"><b>Cómo suena:</b> más grave, más largo, más retumbo y más temblor = mayor magnitud. Timbre áspero = superficial; tono liso = intermedio; tono sordo y lejano = profundo. En audífonos o parlantes estéreo: izquierda = norte, derecha = sur.</p>
     </aside>
   </div>
 
@@ -245,13 +245,16 @@ function mostrarDetalle(e) {
 }
 
 // ---------- Sonificación ----------
-// Magnitud -> tono (más grave = más fuerte, entre 260 y 100 Hz) y duración (más largo = más fuerte).
+// Magnitud -> tono (más grave = más fuerte, entre 320 y 90 Hz), duración, retumbo y temblor.
+// Latitud -> posición en el estéreo (norte a la izquierda, sur a la derecha).
 // Profundidad -> timbre (áspero superficial, liso intermedio, sordo y lejano profundo).
-let ctx = null, ruido = null;
+let ctx = null, ruido = null, bus = null, ultimoInicio = 0;
 
 function iniciarAudio() {
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
+    bus = ctx.createDynamicsCompressor();   // evita saturación y que los sonidos simultáneos se tapen entre sí
+    bus.connect(ctx.destination);
     const len = ctx.sampleRate * 3;
     ruido = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = ruido.getChannelData(0);
@@ -279,24 +282,48 @@ function probarSonido() {
 }
 document.getElementById('btnTest').addEventListener('click', probarSonido);
 
-function sonar(e) {
+// enCola = true durante la reproducción cronológica: los eventos casi simultáneos se escalonan para que se distingan.
+function sonar(e, enCola) {
   iniciarAudio();
   if (ctx.state !== 'running') {   // el audio aún estaba bloqueado: espera a que se active y reintenta una vez
-    ctx.resume().then(() => { if (ctx.state === 'running') sonar(e); });
+    ctx.resume().then(() => { if (ctx.state === 'running') sonar(e, enCola); });
     return;
   }
   const clase = claseProf(e.prof);
-  const f = 260 * Math.pow(2, -(e.mag - 7) * 0.55);  // 7.0 -> 260 Hz, 9.5 -> 100 Hz (audible en parlantes de notebook)
-  const dur = 0.5 + (e.mag - 7) * 1.3;                // 7.0 -> 0.5 s, 9.5 -> 3.75 s
-  const pico = 0.22 + (e.mag - 7) * 0.04;             // el volumen cambia poco: lo cargan tono, duración y timbre
-  const t0 = ctx.currentTime;
+  const fuerza = (e.mag - 7) / 2.5;                        // 0 (M7,0) a 1 (M9,5)
+  const f = 320 * Math.pow(2, -(e.mag - 7) * 0.72);        // 7.0 -> 320 Hz, 9.5 -> 90 Hz
+  const dur = 0.4 + (e.mag - 7) * 1.5;                     // 7.0 -> 0.4 s, 9.5 -> 4,15 s
+  const pico = 0.18 + fuerza * 0.22;                       // el volumen ayuda, pero lo cargan tono, duración y timbre
+  let t0 = ctx.currentTime;
+  if (enCola) { t0 = Math.max(t0, ultimoInicio + 0.5); ultimoInicio = t0; }
   const ataque = clase === 'prof' ? 0.25 : clase === 'med' ? 0.08 : 0.02;
 
   const master = ctx.createGain();
   master.gain.setValueAtTime(0.0001, t0);
   master.gain.exponentialRampToValueAtTime(pico, t0 + ataque);
   master.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  master.connect(ctx.destination);
+
+  // posición en el estéreo según la latitud: norte a la izquierda, sur a la derecha
+  if (ctx.createStereoPanner) {
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = -0.8 + 1.6 * ((e.lat - LAT_N) / (LAT_S - LAT_N));
+    master.connect(pan); pan.connect(bus);
+  } else {
+    master.connect(bus);
+  }
+
+  // temblor: desde magnitudes grandes el sonido vibra (más hondo mientras mayor es el terremoto)
+  const trem = ctx.createGain();
+  const prof = Math.max(0, fuerza - 0.35) * 0.5;
+  trem.gain.value = 1 - prof;
+  if (prof > 0) {
+    const lfo = ctx.createOscillator(), lg = ctx.createGain();
+    lfo.frequency.value = 5 + fuerza * 3;
+    lg.gain.value = prof;
+    lfo.connect(lg); lg.connect(trem.gain);
+    lfo.start(t0); lfo.stop(t0 + dur + 0.05);
+  }
+  trem.connect(master);
 
   const osc = ctx.createOscillator();
   osc.type = clase === 'sup' ? 'sawtooth' : clase === 'med' ? 'triangle' : 'sine';
@@ -304,8 +331,8 @@ function sonar(e) {
   osc.frequency.exponentialRampToValueAtTime(f, t0 + Math.min(dur, 0.6));
   const lp = ctx.createBiquadFilter();
   lp.type = 'lowpass';
-  lp.frequency.value = clase === 'sup' ? f * 6 : clase === 'med' ? f * 3 : f * 2.5;
-  osc.connect(lp); lp.connect(master);
+  lp.frequency.value = (clase === 'sup' ? f * 6 : clase === 'med' ? f * 3 : f * 2.5) * (1 + fuerza);   // más brillante mientras mayor
+  osc.connect(lp); lp.connect(trem);
   osc.start(t0); osc.stop(t0 + dur + 0.05);
 
   // armónico una octava arriba: los parlantes chicos no reproducen bien los graves, pero el oído sigue "oyendo" el tono grave
@@ -318,20 +345,23 @@ function sonar(e) {
   osc2.connect(g2); g2.connect(lp);
   osc2.start(t0); osc2.stop(t0 + dur + 0.05);
 
-  if (clase !== 'prof') {   // retumbo de ruido en los eventos más superficiales
-    const n = ctx.createBufferSource();
-    n.buffer = ruido;
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'lowpass';
-    bp.frequency.value = f * 4;
-    const gn = ctx.createGain();
-    gn.gain.value = clase === 'sup' ? 0.9 : 0.3;
-    n.connect(bp); bp.connect(gn); gn.connect(master);
-    n.start(t0, 0, Math.min(dur + 0.05, 3));
-  }
+  // retumbo de ruido: lo marca la profundidad (más en lo superficial) y lo crece la magnitud
+  const n = ctx.createBufferSource();
+  n.buffer = ruido;
+  n.loop = true;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'lowpass';
+  bp.frequency.value = f * 4;
+  const gn = ctx.createGain();
+  gn.gain.value = (clase === 'sup' ? 0.8 : clase === 'med' ? 0.3 : 0.12) * (0.25 + fuerza);
+  n.connect(bp); bp.connect(gn); gn.connect(trem);
+  n.start(t0); n.stop(t0 + dur + 0.05);
 
   const c = [...svg.querySelectorAll('circle.q')].find(x => x._e === e);
-  if (c) { c.classList.add('sonando'); setTimeout(() => c.classList.remove('sonando'), dur * 1000); }
+  if (c) {
+    setTimeout(() => c.classList.add('sonando'), (t0 - ctx.currentTime) * 1000);
+    setTimeout(() => c.classList.remove('sonando'), (t0 - ctx.currentTime + dur) * 1000);
+  }
 }
 
 // ---------- Reproducción cronológica ----------
@@ -386,7 +416,7 @@ function reproducir() {
       const ph = document.getElementById('playhead');
       ph.setAttribute('x1', x); ph.setAttribute('x2', x);
       while (i < lista.length && lista[i].t <= tAct) {
-        sonar(lista[i]);
+        sonar(lista[i], true);
         mostrarDetalle(lista[i]);
         document.getElementById('status').textContent = `Año ${lista[i].anio}…`;
         i++;

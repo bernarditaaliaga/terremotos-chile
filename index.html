@@ -91,6 +91,7 @@
         <span class="dot" style="background:var(--prof)"></span>profundo (&gt; 100 km)
       </div>
       <div class="tamanos" id="tamanos"></div>
+      <p class="hint">Los círculos que se superponen se separan un poco en horizontal, respetando el orden en el tiempo (el que ocurrió antes queda a la izquierda). El punto gris marca la fecha exacta; la fecha y la hora están en el detalle.</p>
     </section>
 
     <aside class="card" id="panel" aria-live="polite">
@@ -111,12 +112,13 @@
   <p class="fuente">Datos: catálogo de terremotos del USGS (Servicio Geológico de EE. UU.), eventos de magnitud 7 o más entre 1900 y 2026 ubicados en Chile. Detalle del procesamiento en el README.</p>
 </main>
 
-<script src="data.js"></script>
+<script src="data.js?v=2"></script>
 <script>
 // ---------- Datos ----------
 const eventos = TERREMOTOS.map(e => {
   const [y, m, d] = e.fecha.split('-').map(Number);
-  const t = y + ((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 1)) / 86400000) / 365.25;
+  const [hh, mm, ss] = (e.hora || '12:00:00').split(':').map(Number);   // hora UTC (USGS); ordena los eventos del mismo día
+  const t = y + ((Date.UTC(y, m - 1, d, hh, mm, ss) - Date.UTC(y, 0, 1)) / 86400000) / 365.25;
   return { ...e, t, anio: y };
 });
 
@@ -168,6 +170,39 @@ function visibles() {
   );
 }
 
+// Separa los círculos que se tapan: se desplazan solo en horizontal y respetando el orden en el tiempo
+// (el que ocurrió antes queda a la izquierda). Es aproximado: el punto gris marca la posición exacta
+// y el panel de detalle da la fecha y la hora.
+function posiciones(lista) {
+  const orden = [...lista].sort((a, b) => a.t - b.t);
+  const col = [], pos = new Map();
+  let grupos = 0;
+  orden.forEach(e => {
+    const r = radio(e.mag), y = yDe(e.lat), x0 = xDe(e.t);
+    let x = x0, g = null;
+    for (let vuelta = 0; vuelta < 30; vuelta++) {
+      let movido = false;
+      for (const c of col) {
+        const dy = y - c.y, min = r + c.r + 1.5;
+        if ((x - c.x) ** 2 + dy * dy < min * min) {
+          const nx = c.x + Math.sqrt(Math.max(min * min - dy * dy, 0));
+          if (nx > x) { x = nx; movido = true; }
+          g = c.g;
+        }
+      }
+      if (!movido) break;
+    }
+    if (g === null) g = ++grupos;
+    const o = { x, x0, y, r, g };
+    col.push(o); pos.set(e, o);
+  });
+  // cada grupo se recentra para que el desplazamiento promedio sea cero
+  const suma = {};
+  col.forEach(o => { (suma[o.g] = suma[o.g] || { s: 0, n: 0 }); suma[o.g].s += o.x - o.x0; suma[o.g].n++; });
+  col.forEach(o => { o.x = Math.min(W - M.r, Math.max(M.l, o.x - suma[o.g].s / suma[o.g].n)); });
+  return pos;
+}
+
 function dibujar() {
   svg.innerHTML = '';
   const g = el('g');
@@ -197,10 +232,18 @@ function dibujar() {
 
   // círculos: los grandes primero para que los chicos queden encima
   const vis = visibles().sort((a, b) => b.mag - a.mag);
+  const pos = posiciones(vis);
+  vis.forEach(e => {   // marca de la posición exacta de los círculos que se desplazaron
+    const o = pos.get(e);
+    if (Math.abs(o.x - o.x0) > 3) {
+      g.appendChild(el('line', { x1: o.x0, x2: o.x, y1: o.y, y2: o.y, stroke: '#9aa0a6', 'stroke-width': 1 }));
+      g.appendChild(el('circle', { cx: o.x0, cy: o.y, r: 1.8, fill: '#6b7280' }));
+    }
+  });
   vis.forEach(e => {
     const c = el('circle', {
       class: 'q' + (estado.sel === e ? ' sel' : ''),
-      cx: xDe(e.t), cy: yDe(e.lat), r: radio(e.mag),
+      cx: pos.get(e).x, cy: pos.get(e).y, r: radio(e.mag),
       tabindex: 0, role: 'button',
       'aria-label': `${e.lugar}, ${e.fecha}, magnitud ${e.mag}, profundidad ${Math.round(e.prof)} kilómetros`
     });
@@ -215,7 +258,7 @@ function dibujar() {
 
   // etiquetas para los mayores
   vis.filter(e => e.mag >= 8.5).forEach(e => {
-    const x = xDe(e.t), y = yDe(e.lat);
+    const x = pos.get(e).x, y = pos.get(e).y;
     const derecha = x < W - 150;
     g.appendChild(el('text', {
       class: 'lbl', x: derecha ? x + radio(e.mag) + 6 : x - radio(e.mag) - 6, y: y + 4,
@@ -239,7 +282,7 @@ function mostrarDetalle(e) {
   document.getElementById('datos').hidden = false;
   document.getElementById('dLugar').textContent = e.lugar;
   document.getElementById('dFecha').textContent = new Date(e.fecha + 'T12:00:00Z')
-    .toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+    .toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) + (e.hora ? `, ${e.hora.slice(0, 5)} UTC` : '');
   document.getElementById('dMag').textContent = e.mag.toFixed(1);
   document.getElementById('dProf').textContent = `${Math.round(e.prof)} km`;
   document.getElementById('dTipo').textContent = nombreClase[claseProf(e.prof)];
@@ -249,7 +292,7 @@ function mostrarDetalle(e) {
 // Magnitud -> tono (más grave = más fuerte, entre 320 y 90 Hz), duración, retumbo y temblor.
 // Latitud -> posición en el estéreo (norte a la izquierda, sur a la derecha).
 // Profundidad -> timbre (áspero superficial, liso intermedio, sordo y lejano profundo).
-const VERSION_SONIDO = 'sonido-3 (estéreo + escalonado)';
+const VERSION_SONIDO = 'sonido-3 (estéreo + escalonado)';   // datos: data.js?v=2 (con hora UTC)
 let ctx = null, ruido = null, bus = null, ultimoInicio = 0;
 
 function iniciarAudio() {

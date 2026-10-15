@@ -15,7 +15,8 @@ Proyecto del curso Visualización de Información (IIC2026).
 ## Datos
 
 - Fuente: catálogo de terremotos del USGS (Servicio Geológico de EE. UU.), consulta por API: magnitud ≥ 7, años 1900–2026, latitud −56 a −17 y longitud −76 a −66.
-- Procesamiento: se descartaron los eventos ubicados en Perú, Bolivia y Argentina (quedaron 66 en Chile), se dejaron solo fecha, latitud, longitud, profundidad, magnitud y lugar, y se acortaron los nombres de lugar. El resultado está en `data/terremotos_chile.csv`.
+- Procesamiento: se descartaron los eventos ubicados en Perú, Bolivia y Argentina (quedaron 66 en Chile), se dejaron solo fecha, hora (UTC), latitud, longitud, profundidad, magnitud y lugar, y se acortaron los nombres de lugar. El resultado está en `data/terremotos_chile.csv`.
+- La hora UTC se agregó después (15 de octubre de 2026) con una nueva consulta al USGS: los 66 eventos coinciden exactamente por fecha, coordenadas y magnitud. Sirve para ordenar los eventos del mismo día (por ejemplo, el 22 de mayo de 1960: Angol 10:30, Traiguén 18:56, Valdivia 19:11).
 - `data.js` es el mismo CSV convertido a JavaScript para que la página funcione sin servidor.
 - Limitación: los catálogos antiguos tienen más incertidumbre en ubicación y profundidad que los recientes.
 
@@ -75,3 +76,9 @@ git push -u origin main --tags
 
 - **Qué cambió:** el contraste entre magnitudes es mayor (tono 320–90 Hz, duración 0,4–4,15 s, y retumbo, brillo y temblor que crecen con la magnitud). La latitud ahora se oye en el estéreo (norte a la izquierda, sur a la derecha). En la reproducción cronológica los eventos casi simultáneos se escalonan 0,5 s, y se agregó un compresor para que no se tapen ni saturen.
 - **Motivo:** al escuchar, los terremotos solapados no se distinguían y era difícil percibir la diferencia entre magnitudes grandes y pequeñas.
+
+### Separación de círculos solapados (posterior al tag v2)
+
+- **Qué cambió:** los círculos que se tapan se desplazan un poco en horizontal respetando el orden en el tiempo (el que ocurrió antes queda a la izquierda), usando la hora UTC. Un punto gris marca la posición exacta y el detalle muestra fecha y hora. Al acotar el rango de años el desplazamiento se reduce solo.
+- **Motivo:** los eventos de 1960 y otros del mismo día se superponían y no se podían distinguir ni ordenar.
+- **Limitación:** la posición horizontal de esos círculos es aproximada; la fecha y la hora exactas están en el panel de detalle.

@@ -286,7 +286,7 @@ function mostrarDetalle(e) {
 // Magnitud -> TIMBRE (el tono es siempre el mismo): agudo y brillante = más chico; grave y oscuro, con retumbo y temblor = más grande.
 // Latitud -> posición en el estéreo (norte a la izquierda, sur a la derecha).
 // Profundidad -> timbre (áspero superficial, liso intermedio, sordo y lejano profundo).
-const VERSION_SONIDO = 'sonido-5 (mismo tono; timbre agudo=pequeño, grave=grande)';   // datos: data.js?v=2 (con hora UTC)
+const VERSION_SONIDO = 'sonido-7 (mismo tono; chicos muy agudos)';   // datos: data.js?v=2 (con hora UTC)
 let ctx = null, ruido = null, bus = null, ultimoInicio = 0;
 
 function iniciarAudio() {
@@ -321,6 +321,13 @@ function probarSonido() {
 }
 document.getElementById('btnTest').addEventListener('click', probarSonido);
 
+// Ganancia de compensación por magnitud (fuerza 0, 0,2, … 1): iguala la sonoridad entre M7 y M9,5.
+const COMPENSACION = [1.2, 1.8, 2.4, 2.65, 2.65, 2.3];
+function interpola(x, tabla) {
+  const k = x * (tabla.length - 1), i = Math.min(Math.floor(k), tabla.length - 2);
+  return tabla[i] + (tabla[i + 1] - tabla[i]) * (k - i);
+}
+
 // enCola = true durante la reproducción cronológica: los eventos casi simultáneos se escalonan para que se distingan.
 function sonar(e, enCola) {
   iniciarAudio();
@@ -353,45 +360,61 @@ function sonar(e, enCola) {
 
   // temblor: desde magnitudes grandes el sonido vibra (más hondo mientras mayor es el terremoto)
   const trem = ctx.createGain();
-  const hondo = Math.max(0, fuerza - 0.35) * 0.5;
+  const hondo = Math.max(0, fuerza - 0.2) * 0.9;
   trem.gain.value = 1 - hondo;
   if (hondo > 0) {
     const lfo = ctx.createOscillator(), lg = ctx.createGain();
-    lfo.frequency.value = 5 + fuerza * 3;
+    lfo.frequency.value = 6 + 22 * fuerza * fuerza;   // de temblor lento (M8) a aspereza rápida (M9,5)
     lg.gain.value = hondo;
     lfo.connect(lg); lg.connect(trem.gain);
     lfo.start(t0); lfo.stop(t0 + dur + 0.05);
   }
   trem.connect(master);
 
-  // TIMBRE según la magnitud (mismo tono F0): M7 = agudo, brillante y delgado; M9,5 = grave, oscuro y pesado
+  // TIMBRE según la magnitud (mismo tono F0), con varias capas que cambian a la vez:
+  // M7 = agudo, brillante, delgado, casi sin ruido; M9,5 = grave, sordo, pesado, con retumbo y aspereza.
   const osc = ctx.createOscillator();
-  osc.type = 'sawtooth';                                   // rica en armónicos, para que el filtro cambie el color del sonido
+  osc.type = 'sawtooth';                                   // rica en armónicos, para que los filtros cambien el color del sonido
   osc.frequency.value = F0;
   const hp = ctx.createBiquadFilter();                     // quita los graves en los chicos (sonido delgado)
   hp.type = 'highpass';
-  hp.frequency.value = 20 * Math.pow(8, 1 - fuerza);       // M7: 160 Hz, M9,5: 20 Hz (sin quitar la fundamental: el tono no cambia)
-  const lp = ctx.createBiquadFilter();                     // quita los agudos en los grandes (sonido sordo)
-  lp.type = 'lowpass';
-  lp.frequency.value = 5200 * Math.pow(0.075, fuerza);     // M7: 5200 Hz, M9,5: 390 Hz
+  hp.frequency.value = 20 * Math.pow(15, 1 - fuerza);      // M7: 300 Hz (sonido delgado), M9,5: 20 Hz (el oído sigue oyendo el mismo tono)
+  const lp1 = ctx.createBiquadFilter(), lp2 = ctx.createBiquadFilter();   // dos filtros en serie: corte más marcado
+  lp1.type = lp2.type = 'lowpass';
+  lp1.frequency.value = lp2.frequency.value = 12000 * Math.pow(0.021, fuerza);  // M7: 12000 Hz (muy brillante), M9,5: 250 Hz (casi solo la fundamental)
   const sh = ctx.createBiquadFilter();                     // refuerza los graves en los grandes
   sh.type = 'lowshelf';
-  sh.frequency.value = 180;
-  sh.gain.value = 9 * fuerza;
-  const mk = ctx.createGain();                             // compensa la energía que quitan los filtros
-  mk.gain.value = 3.0 - 3.99 * fuerza + 3.6 * fuerza * fuerza;   // ajustada midiendo para que M7, M8 y M9,5 suenen igual de fuerte
-  osc.connect(hp); hp.connect(lp); lp.connect(sh); sh.connect(mk); mk.connect(trem);
+  sh.frequency.value = 200;
+  sh.gain.value = 14 * fuerza;
+  const hs = ctx.createBiquadFilter();                     // realza los agudos en los chicos
+  hs.type = 'highshelf';
+  hs.frequency.value = 2500;
+  hs.gain.value = 14 * (1 - fuerza);
+  const mk = ctx.createGain();                             // compensa la energía que quitan los filtros (calibrada midiendo)
+  mk.gain.value = interpola(fuerza, COMPENSACION);
+  osc.connect(hp); hp.connect(lp1); lp1.connect(lp2); lp2.connect(sh); sh.connect(hs); hs.connect(mk); mk.connect(trem);
   osc.start(t0); osc.stop(t0 + dur + 0.05);
 
-  // retumbo de ruido: más grave mientras mayor la magnitud; la cantidad la marca la profundidad (más en lo superficial)
+  // chasquido agudo al inicio, solo en los chicos (como un "tic" brillante)
+  const ck = ctx.createBufferSource();
+  ck.buffer = ruido;
+  const ckf = ctx.createBiquadFilter();
+  ckf.type = 'highpass';
+  ckf.frequency.value = 3000;
+  const ckg = ctx.createGain();
+  ckg.gain.value = 0.35 * Math.pow(1 - fuerza, 2);
+  ck.connect(ckf); ckf.connect(ckg); ckg.connect(master);
+  ck.start(t0); ck.stop(t0 + 0.04);
+
+  // ruido: casi nada en los chicos (siseo agudo) y mucho retumbo grave en los grandes; la profundidad pone más en lo superficial
   const n = ctx.createBufferSource();
   n.buffer = ruido;
   n.loop = true;
   const nf = ctx.createBiquadFilter();
   nf.type = 'lowpass';
-  nf.frequency.value = 3000 * Math.pow(0.1, fuerza);       // M7: 3000 Hz (siseo), M9,5: 300 Hz (retumbo)
+  nf.frequency.value = 4500 * Math.pow(0.05, fuerza);      // M7: 4500 Hz (siseo), M9,5: 225 Hz (retumbo)
   const gn = ctx.createGain();
-  gn.gain.value = (clase === 'sup' ? 0.5 : clase === 'med' ? 0.2 : 0.08) * (0.4 + fuerza);
+  gn.gain.value = (clase === 'sup' ? 0.5 : clase === 'med' ? 0.25 : 0.1) * (0.05 + 2.6 * Math.pow(fuerza, 1.5));
   n.connect(nf); nf.connect(gn); gn.connect(trem);
   n.start(t0); n.stop(t0 + dur + 0.05);
 

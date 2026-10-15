@@ -89,3 +89,9 @@ git push -u origin main --tags
 - **Tamaño:** radios de ~5 px (M7) a ~25 px (M9,5); cada +1 de magnitud multiplica el área por ~3,6.
 - **Separación:** los círculos que se tapan se alejan al menos 14 px entre sí, respetando el orden en el tiempo (más separación que antes); el gráfico es más alto y la etiqueta de los mayores va sobre el círculo.
 - **Limitación:** con esta separación 32 de los 66 círculos quedan desplazados respecto de su fecha exacta (hasta ~96 px en la escala 1900–2026); el punto gris marca la posición exacta, y al acotar el rango de años el desplazamiento se reduce.
+
+### Ajuste de sonido 4: timbre muy contrastado (posterior al tag v2)
+
+- **Qué cambió:** el tono sigue siendo siempre el mismo (220 Hz). La magnitud cambia varias capas del timbre a la vez: filtro de agudos (de 12.000 Hz en M7 a 250 Hz en M9,5), filtro de graves, realce de agudos en los chicos y de graves en los grandes, un chasquido agudo al inicio solo en los chicos, ruido (casi nada en los chicos, mucho retumbo grave en los grandes) y aspereza por temblor rápido en los grandes.
+- **Medición:** el centroide espectral baja de ~5.800 Hz (M7, 62 % de la energía sobre 1.500 Hz) a ~250 Hz (M9,5, 0 %); el pico espectral queda en ~223 Hz en todas las magnitudes. Los picos de volumen no superan 0,92.
+- **Motivo:** al escuchar, la diferencia entre magnitudes no se percibía.

@@ -83,8 +83,8 @@
         <label>Hasta: <b id="vHasta">2026</b>
           <input id="hasta" type="range" min="1910" max="2026" step="1" value="2026">
         </label>
-        <label>Ancho del gráfico: <b id="vZoom">2×</b>
-          <input id="zoom" type="range" min="1" max="4" step="0.5" value="2">
+        <label>Ancho del gráfico: <b id="vZoom">3×</b>
+          <input id="zoom" type="range" min="1" max="6" step="0.5" value="3">
         </label>
         <label>Tiempo por terremoto: <b id="vRitmo">1,5 s</b>
           <input id="ritmo" type="range" min="0.5" max="4" step="0.25" value="1.5">
@@ -174,7 +174,7 @@ const ciudades = [
   ['Puerto Montt', -41.47], ['Punta Arenas', -53.16]
 ];
 
-const estado = { zoom: 2, minMag: 7, desde: 1900, hasta: 2026, sup: true, med: true, prof: true, sel: null };
+const estado = { zoom: 3, minMag: 7, desde: 1900, hasta: 2026, sup: true, med: true, prof: true, sel: null };
 let animando = null;
 
 function el(nombre, attrs = {}, texto) {
@@ -198,7 +198,7 @@ function mostrarGuia(e, on) {   // punto gris + línea con la posición exacta, 
   const g = guias.get(e);
   if (g) g.forEach(n => n.classList.toggle('on', on || estado.sel === e));
 }
-const SEPARACION = 16;   // espacio mínimo (px) entre círculos vecinos
+const SEPARACION = 20;   // espacio mínimo (px) entre círculos vecinos
 // Separa los círculos que se tapan: se desplazan solo en horizontal y respetando el orden en el tiempo
 // (el que ocurrió antes queda a la izquierda). Es aproximado: el punto gris marca la posición exacta
 // y el panel de detalle da la fecha y la hora.
@@ -505,7 +505,10 @@ function sonarBasico(e, enCola) {   // motor de respaldo (Web Audio puro) si Ton
 // Magnitud -> TONO: muy agudo (2000 Hz) en M7 y muy grave (45 Hz) en M9,5, y también duración: tic breve vs retumbo largo.
 // Profundidad -> cantidad de aspereza (más en lo superficial) y ataque (más lento en lo profundo).
 // Latitud -> estéreo (norte a la izquierda, sur a la derecha).
-let busTone = null, ajusteSync = 0;
+let busTone = null, ajusteSync = 0, ultimoNodos = null;
+function atenuar(nodos) {   // desvanece rápido el sonido anterior para que no se pisen las colas
+  nodos.forEach(n => { try { if (n.volume) n.volume.rampTo(-80, 0.12); } catch (_) {} });
+}
 // Retraso entre que se agenda el sonido y se oye: adelanto de Tone.js + latencia del navegador + latencia de la salida (los audífonos Bluetooth suman mucho).
 // El gráfico se retrasa ese tiempo (más el ajuste manual) para que la línea llegue al círculo cuando suena.
 function latenciaMs() {
@@ -527,6 +530,8 @@ function sonarTone(e, enCola) {
   const asp = clase === 'sup' ? 0 : clase === 'med' ? -5 : -10;   // dB de aspereza según la profundidad
   const nodos = [];
   const nodo = n => (nodos.push(n), n);
+  if (enCola && ultimoNodos) atenuar(ultimoNodos);   // en la reproducción, solo suena un terremoto a la vez
+  ultimoNodos = nodos;
 
   const pan = nodo(new Tone.Panner(-0.8 + 1.6 * ((e.lat - LAT_N) / (LAT_S - LAT_N)))).connect(busTone);
 
@@ -629,12 +634,13 @@ function reproducir() {
 
   function arrancar() {
     const xs = lista.map(e => (ultimaPos.get(e) || { x: xDe(e.t) }).x);   // la línea recorre los círculos tal como se ven
-    let avance = 0, ultimo = performance.now(), i = 0, iv = 0;   // avance = cuántos terremotos lleva (se puede cambiar la velocidad en vivo)
+    let avance = 0, ultimo = performance.now(), i = 0, iv = 0, ultimoDisparo = -1e9;   // avance = cuántos terremotos lleva (se puede cambiar la velocidad en vivo)
     const lienzo = document.getElementById('lienzo');
     const paso = ahora => {
-      avance += (ahora - ultimo) / RITMO; ultimo = ahora;
+      // Si el navegador se atrasa, el tiempo se detiene en vez de "ponerse al día" disparando varios terremotos de golpe (se oirían encimados).
+      avance += Math.min(ahora - ultimo, 100) / RITMO; ultimo = ahora;
       const k = Math.min(Math.floor(avance), lista.length - 1);
-      while (i <= k) { sonar(lista[i]); i++; }   // el sonido se agenda de inmediato
+      if (i <= k && ahora - ultimoDisparo >= 0.85 * RITMO) { sonar(lista[i], true); i++; ultimoDisparo = ahora; }   // estrictamente en orden y nunca dos juntos
       const av = Math.max(0, avance - latenciaMs() / RITMO);   // lo que se ve va retrasado lo que tarda en oírse
       const kv = Math.min(Math.floor(av), lista.length - 1);
       while (iv <= kv) {

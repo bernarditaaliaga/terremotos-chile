@@ -103,3 +103,8 @@ git push -u origin main --tags
 - **Escala:** control de ancho del gráfico (1× a 4×, por defecto 2×); los círculos mantienen su tamaño y se separan más; los nombres de las ciudades quedan fijos a la izquierda.
 - **Separación:** el orden de izquierda a derecha es siempre el orden en el tiempo (la línea de reproducción nunca retrocede); separación mínima de 16 px entre círculos; las etiquetas buscan un lugar donde no tapen círculos; la posición exacta de los círculos desplazados se muestra al pasar el cursor.
 - **Motivo:** al probarlo, el sonido no era representativo, iba demasiado rápido, los círculos seguían solapándose y la línea de reproducción se devolvía.
+
+### Reproducción estrictamente ordenada (posterior al tag v2)
+
+- **Qué cambió:** como máximo un terremoto por cuadro y un tiempo mínimo entre sonidos (si el navegador se atrasa, el tiempo se detiene en vez de disparar varios de golpe); cada sonido desvanece al anterior; escala del gráfico por defecto 3× (hasta 6×) y separación mínima de 20 px entre círculos.
+- **Motivo:** en una prueba el segundo y el tercer sonido salieron con 21 ms de diferencia (se oían encimados o en desorden). Tras la corrección, en una reproducción completa la separación mínima fue de ~500 ms con 0 inversiones de orden.

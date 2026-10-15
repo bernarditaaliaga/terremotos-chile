@@ -82,7 +82,7 @@
         <label class="chk"><input type="checkbox" id="cProf" checked> Profundo</label>
       </div>
       <div id="status" aria-live="polite"></div>
-      <svg id="chart" viewBox="0 0 1000 540" role="img"
+      <svg id="chart" viewBox="0 0 1000 640" role="img"
            aria-label="Terremotos de magnitud 7 o más en Chile: año en el eje horizontal, latitud en el vertical"></svg>
       <div class="legend">
         Tamaño = magnitud · Color =
@@ -104,7 +104,7 @@
         <dt>Profundidad</dt><dd id="dProf"></dd>
         <dt>Tipo</dt><dd id="dTipo"></dd>
       </dl>
-      <p class="hint"><b>Cómo suena:</b> más grave, más largo, más retumbo y más temblor = mayor magnitud. Timbre áspero = superficial; tono liso = intermedio; tono sordo y lejano = profundo. En audífonos o parlantes estéreo: izquierda = norte, derecha = sur.</p>
+      <p class="hint"><b>Cómo suena:</b> el tono es siempre el mismo; lo que cambia con la magnitud es el timbre: agudo, brillante y delgado = menor magnitud; grave, oscuro y con retumbo = mayor magnitud. Más ruido áspero = más superficial. En audífonos o parlantes estéreo: izquierda = norte, derecha = sur.</p>
     </aside>
   </div>
 
@@ -125,9 +125,9 @@ const eventos = TERREMOTOS.map(e => {
 const claseProf = p => p < 50 ? 'sup' : (p <= 100 ? 'med' : 'prof');
 const nombreClase = { sup: 'Superficial', med: 'Intermedio', prof: 'Profundo' };
 const colorClase = { sup: 'var(--sup)', med: 'var(--med)', prof: 'var(--prof)' };
-// Área proporcional a (energía)^(1/3): cada +1 de magnitud multiplica la energía por ~32 y el área por ~3,2.
+// Cada +1 de magnitud multiplica la energía por ~32 y el área del círculo por ~3,6 (el radio por ~1,9).
 // Con área proporcional a la energía completa, M9,5 sería ~75 veces más ancho que M7 y taparía el gráfico.
-const radio = mag => 4 * Math.pow(10, 0.25 * (mag - 7));
+const radio = mag => 5 * Math.pow(10, 0.28 * (mag - 7));
 
 // ---------- Titular (vista general) ----------
 (function titular() {
@@ -142,7 +142,7 @@ const radio = mag => 4 * Math.pow(10, 0.25 * (mag - 7));
 // ---------- Gráfico ----------
 const svg = document.getElementById('chart');
 const NS = 'http://www.w3.org/2000/svg';
-const W = 1000, H = 540, M = { l: 100, r: 20, t: 16, b: 36 };
+const W = 1000, H = 640, M = { l: 100, r: 20, t: 16, b: 36 };
 const iw = W - M.l - M.r, ih = H - M.t - M.b;
 const LAT_N = -17, LAT_S = -56;
 const ciudades = [
@@ -170,36 +170,32 @@ function visibles() {
   );
 }
 
+const SEPARACION = 14;   // espacio mínimo (px) entre círculos vecinos
 // Separa los círculos que se tapan: se desplazan solo en horizontal y respetando el orden en el tiempo
 // (el que ocurrió antes queda a la izquierda). Es aproximado: el punto gris marca la posición exacta
 // y el panel de detalle da la fecha y la hora.
 function posiciones(lista) {
-  const orden = [...lista].sort((a, b) => a.t - b.t);
-  const col = [], pos = new Map();
-  let grupos = 0;
-  orden.forEach(e => {
-    const r = radio(e.mag), y = yDe(e.lat), x0 = xDe(e.t);
-    let x = x0, g = null;
-    for (let vuelta = 0; vuelta < 30; vuelta++) {
-      let movido = false;
-      for (const c of col) {
-        const dy = y - c.y, min = r + c.r + 1.5;
-        if ((x - c.x) ** 2 + dy * dy < min * min) {
-          const nx = c.x + Math.sqrt(Math.max(min * min - dy * dy, 0));
-          if (nx > x) { x = nx; movido = true; }
-          g = c.g;
-        }
-      }
-      if (!movido) break;
-    }
-    if (g === null) g = ++grupos;
-    const o = { x, x0, y, r, g };
-    col.push(o); pos.set(e, o);
+  const P = [...lista].sort((a, b) => a.t - b.t).map(e => {
+    const x = xDe(e.t);
+    return { e, x0: x, x, y: yDe(e.lat), r: radio(e.mag) };
   });
-  // cada grupo se recentra para que el desplazamiento promedio sea cero
-  const suma = {};
-  col.forEach(o => { (suma[o.g] = suma[o.g] || { s: 0, n: 0 }); suma[o.g].s += o.x - o.x0; suma[o.g].n++; });
-  col.forEach(o => { o.x = Math.min(W - M.r, Math.max(M.l, o.x - suma[o.g].s / suma[o.g].n)); });
+  for (let it = 0; it < 400; it++) {   // cada par que se tapa se aleja por igual; el que ocurrió antes va a la izquierda
+    let movido = false;
+    for (let i = 0; i < P.length; i++) {
+      for (let j = i + 1; j < P.length; j++) {
+        const a = P[i], b = P[j];
+        if (b.x0 - a.x0 > 200) break;                      // ordenados por tiempo: más allá no hay interacción
+        const dy = b.y - a.y, min = a.r + b.r + SEPARACION;
+        if (Math.abs(dy) >= min) continue;
+        const necesaria = Math.sqrt(min * min - dy * dy);  // separación horizontal que hace falta
+        const hay = b.x - a.x;
+        if (hay < necesaria) { const d = (necesaria - hay) / 2 + 0.01; a.x -= d; b.x += d; movido = true; }
+      }
+    }
+    if (!movido) break;
+  }
+  const pos = new Map();
+  P.forEach(o => { o.x = Math.min(W - M.r, Math.max(M.l, o.x)); pos.set(o.e, o); });
   return pos;
 }
 
@@ -259,10 +255,8 @@ function dibujar() {
   // etiquetas para los mayores
   vis.filter(e => e.mag >= 8.5).forEach(e => {
     const x = pos.get(e).x, y = pos.get(e).y;
-    const derecha = x < W - 150;
-    g.appendChild(el('text', {
-      class: 'lbl', x: derecha ? x + radio(e.mag) + 6 : x - radio(e.mag) - 6, y: y + 4,
-      'text-anchor': derecha ? 'start' : 'end'
+    g.appendChild(el('text', {   // sobre el círculo, para no taparlo ni tapar a los vecinos
+      class: 'lbl', x, y: y - radio(e.mag) - 8, 'text-anchor': 'middle'
     }, `${e.anio} · M${e.mag}`));
   });
 
@@ -289,10 +283,10 @@ function mostrarDetalle(e) {
 }
 
 // ---------- Sonificación ----------
-// Magnitud -> tono (más grave = más fuerte, entre 320 y 90 Hz), duración, retumbo y temblor.
+// Magnitud -> TIMBRE (el tono es siempre el mismo): agudo y brillante = más chico; grave y oscuro, con retumbo y temblor = más grande.
 // Latitud -> posición en el estéreo (norte a la izquierda, sur a la derecha).
 // Profundidad -> timbre (áspero superficial, liso intermedio, sordo y lejano profundo).
-const VERSION_SONIDO = 'sonido-3 (estéreo + escalonado)';   // datos: data.js?v=2 (con hora UTC)
+const VERSION_SONIDO = 'sonido-5 (mismo tono; timbre agudo=pequeño, grave=grande)';   // datos: data.js?v=2 (con hora UTC)
 let ctx = null, ruido = null, bus = null, ultimoInicio = 0;
 
 function iniciarAudio() {
@@ -336,11 +330,11 @@ function sonar(e, enCola) {
   }
   const clase = claseProf(e.prof);
   const fuerza = (e.mag - 7) / 2.5;                        // 0 (M7,0) a 1 (M9,5)
-  const f = 320 * Math.pow(2, -(e.mag - 7) * 0.72);        // 7.0 -> 320 Hz, 9.5 -> 90 Hz
-  const dur = 0.4 + (e.mag - 7) * 1.5;                     // 7.0 -> 0.4 s, 9.5 -> 4,15 s
-  const pico = 0.18 + fuerza * 0.22;                       // el volumen ayuda, pero lo cargan tono, duración y timbre
+  const F0 = 220;                                          // el tono es siempre el mismo: la magnitud solo cambia el timbre
+  const dur = 1.2;                                         // duración fija
+  const pico = 0.25;                                       // volumen fijo (la ganancia de compensación iguala la sonoridad)
   let t0 = ctx.currentTime;
-  if (enCola) { t0 = Math.max(t0, ultimoInicio + 0.5); ultimoInicio = t0; }
+  if (enCola) { t0 = Math.max(t0, ultimoInicio + 0.6); ultimoInicio = t0; }
   const ataque = clase === 'prof' ? 0.25 : clase === 'med' ? 0.08 : 0.02;
 
   const master = ctx.createGain();
@@ -359,47 +353,46 @@ function sonar(e, enCola) {
 
   // temblor: desde magnitudes grandes el sonido vibra (más hondo mientras mayor es el terremoto)
   const trem = ctx.createGain();
-  const prof = Math.max(0, fuerza - 0.35) * 0.5;
-  trem.gain.value = 1 - prof;
-  if (prof > 0) {
+  const hondo = Math.max(0, fuerza - 0.35) * 0.5;
+  trem.gain.value = 1 - hondo;
+  if (hondo > 0) {
     const lfo = ctx.createOscillator(), lg = ctx.createGain();
     lfo.frequency.value = 5 + fuerza * 3;
-    lg.gain.value = prof;
+    lg.gain.value = hondo;
     lfo.connect(lg); lg.connect(trem.gain);
     lfo.start(t0); lfo.stop(t0 + dur + 0.05);
   }
   trem.connect(master);
 
+  // TIMBRE según la magnitud (mismo tono F0): M7 = agudo, brillante y delgado; M9,5 = grave, oscuro y pesado
   const osc = ctx.createOscillator();
-  osc.type = clase === 'sup' ? 'sawtooth' : clase === 'med' ? 'triangle' : 'sine';
-  osc.frequency.setValueAtTime(f * 1.15, t0);
-  osc.frequency.exponentialRampToValueAtTime(f, t0 + Math.min(dur, 0.6));
-  const lp = ctx.createBiquadFilter();
+  osc.type = 'sawtooth';                                   // rica en armónicos, para que el filtro cambie el color del sonido
+  osc.frequency.value = F0;
+  const hp = ctx.createBiquadFilter();                     // quita los graves en los chicos (sonido delgado)
+  hp.type = 'highpass';
+  hp.frequency.value = 20 * Math.pow(8, 1 - fuerza);       // M7: 160 Hz, M9,5: 20 Hz (sin quitar la fundamental: el tono no cambia)
+  const lp = ctx.createBiquadFilter();                     // quita los agudos en los grandes (sonido sordo)
   lp.type = 'lowpass';
-  lp.frequency.value = (clase === 'sup' ? f * 6 : clase === 'med' ? f * 3 : f * 2.5) * (1 + fuerza);   // más brillante mientras mayor
-  osc.connect(lp); lp.connect(trem);
+  lp.frequency.value = 5200 * Math.pow(0.075, fuerza);     // M7: 5200 Hz, M9,5: 390 Hz
+  const sh = ctx.createBiquadFilter();                     // refuerza los graves en los grandes
+  sh.type = 'lowshelf';
+  sh.frequency.value = 180;
+  sh.gain.value = 9 * fuerza;
+  const mk = ctx.createGain();                             // compensa la energía que quitan los filtros
+  mk.gain.value = 3.0 - 3.99 * fuerza + 3.6 * fuerza * fuerza;   // ajustada midiendo para que M7, M8 y M9,5 suenen igual de fuerte
+  osc.connect(hp); hp.connect(lp); lp.connect(sh); sh.connect(mk); mk.connect(trem);
   osc.start(t0); osc.stop(t0 + dur + 0.05);
 
-  // armónico una octava arriba: los parlantes chicos no reproducen bien los graves, pero el oído sigue "oyendo" el tono grave
-  const osc2 = ctx.createOscillator();
-  osc2.type = 'sine';
-  osc2.frequency.setValueAtTime(f * 2.3, t0);
-  osc2.frequency.exponentialRampToValueAtTime(f * 2, t0 + Math.min(dur, 0.6));
-  const g2 = ctx.createGain();
-  g2.gain.value = 0.45;
-  osc2.connect(g2); g2.connect(lp);
-  osc2.start(t0); osc2.stop(t0 + dur + 0.05);
-
-  // retumbo de ruido: lo marca la profundidad (más en lo superficial) y lo crece la magnitud
+  // retumbo de ruido: más grave mientras mayor la magnitud; la cantidad la marca la profundidad (más en lo superficial)
   const n = ctx.createBufferSource();
   n.buffer = ruido;
   n.loop = true;
-  const bp = ctx.createBiquadFilter();
-  bp.type = 'lowpass';
-  bp.frequency.value = f * 4;
+  const nf = ctx.createBiquadFilter();
+  nf.type = 'lowpass';
+  nf.frequency.value = 3000 * Math.pow(0.1, fuerza);       // M7: 3000 Hz (siseo), M9,5: 300 Hz (retumbo)
   const gn = ctx.createGain();
-  gn.gain.value = (clase === 'sup' ? 0.8 : clase === 'med' ? 0.3 : 0.12) * (0.25 + fuerza);
-  n.connect(bp); bp.connect(gn); gn.connect(trem);
+  gn.gain.value = (clase === 'sup' ? 0.5 : clase === 'med' ? 0.2 : 0.08) * (0.4 + fuerza);
+  n.connect(nf); nf.connect(gn); gn.connect(trem);
   n.start(t0); n.stop(t0 + dur + 0.05);
 
   const c = [...svg.querySelectorAll('circle.q')].find(x => x._e === e);
@@ -515,7 +508,7 @@ document.getElementById('hasta').addEventListener('input', ev => {
     item.append(s, ` M${m}`);
     cont.appendChild(item);
   });
-  cont.append('Cada +1 de magnitud: ~32 veces más energía, ~3 veces más área.');
+  cont.append('Cada +1 de magnitud: ~32 veces más energía, ~3,6 veces más área.');
 })();
 
 document.getElementById('version').textContent = 'Versión del sonido: ' + VERSION_SONIDO;

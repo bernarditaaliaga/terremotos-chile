@@ -82,3 +82,10 @@ git push -u origin main --tags
 - **Qué cambió:** los círculos que se tapan se desplazan un poco en horizontal respetando el orden en el tiempo (el que ocurrió antes queda a la izquierda), usando la hora UTC. Un punto gris marca la posición exacta y el detalle muestra fecha y hora. Al acotar el rango de años el desplazamiento se reduce solo.
 - **Motivo:** los eventos de 1960 y otros del mismo día se superponían y no se podían distinguir ni ordenar.
 - **Limitación:** la posición horizontal de esos círculos es aproximada; la fecha y la hora exactas están en el panel de detalle.
+
+### Ajuste de sonido 3, escala y separación (posterior al tag v2)
+
+- **Sonido:** el tono ahora es siempre el mismo (220 Hz) y la duración y la sonoridad son fijas; la magnitud solo cambia el **timbre** (M7 agudo, brillante y delgado; M9,5 grave, oscuro y con retumbo y temblor). La profundidad se oye en el ataque y en la aspereza (ruido). La latitud se oye en el estéreo (norte a la izquierda, sur a la derecha).
+- **Tamaño:** radios de ~5 px (M7) a ~25 px (M9,5); cada +1 de magnitud multiplica el área por ~3,6.
+- **Separación:** los círculos que se tapan se alejan al menos 14 px entre sí, respetando el orden en el tiempo (más separación que antes); el gráfico es más alto y la etiqueta de los mayores va sobre el círculo.
+- **Limitación:** con esta separación 32 de los 66 círculos quedan desplazados respecto de su fecha exacta (hasta ~96 px en la escala 1900–2026); el punto gris marca la posición exacta, y al acotar el rango de años el desplazamiento se reduce.

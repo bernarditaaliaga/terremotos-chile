@@ -339,7 +339,7 @@ const btnPlay = document.getElementById('btnPlay');
 const btnStop = document.getElementById('btnStop');
 
 function detener() {
-  if (animando) cancelAnimationFrame(animando.raf);
+  if (animando) { cancelAnimationFrame(animando.raf); clearTimeout(animando.timer); }
   animando = null;
   btnStop.hidden = true;
   btnPlay.hidden = false;
@@ -349,33 +349,53 @@ function detener() {
     `${visibles().length} de ${eventos.length} terremotos con los filtros actuales`;
 }
 
+// La salida de audio (sobre todo con Bluetooth) tarda un instante en "despertar" y se comía los primeros sonidos.
+// Se emite un tono casi inaudible y se espera un momento antes de partir.
+const ESPERA_AUDIO = 1000;
+function calentarAudio() {
+  const t0 = ctx.currentTime;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.frequency.value = 200;
+  g.gain.value = 0.003;
+  o.connect(g); g.connect(ctx.destination);
+  o.start(t0); o.stop(t0 + ESPERA_AUDIO / 1000 + 0.1);
+}
+
 function reproducir() {
   detener();
-  iniciarAudio();
   const lista = visibles().sort((a, b) => a.t - b.t);
   if (!lista.length) return;
   const t0 = estado.desde, t1 = estado.hasta + 1;
   const total = Math.min(45, Math.max(10, (t1 - t0) * 0.36)) * 1000;
-  const inicio = performance.now();
   let i = 0;
   btnPlay.hidden = true; btnStop.hidden = false;
+  document.getElementById('status').textContent = 'Preparando el audio…';
+  animando = {};
+  iniciarAudio().then(() => {
+    if (!animando) return;   // se detuvo mientras se preparaba el audio
+    calentarAudio();
+    animando.timer = setTimeout(arrancar, ESPERA_AUDIO);
+  });
 
-  const paso = ahora => {
-    const prog = Math.min((ahora - inicio) / total, 1);
-    const tAct = t0 + prog * (t1 - t0);
-    const x = xDe(tAct);
-    const ph = document.getElementById('playhead');
-    ph.setAttribute('x1', x); ph.setAttribute('x2', x);
-    while (i < lista.length && lista[i].t <= tAct) {
-      sonar(lista[i]);
-      mostrarDetalle(lista[i]);
-      document.getElementById('status').textContent = `Año ${lista[i].anio}…`;
-      i++;
-    }
-    if (prog < 1) animando.raf = requestAnimationFrame(paso);
-    else setTimeout(detener, 3000);
-  };
-  animando = { raf: requestAnimationFrame(paso) };
+  function arrancar() {
+    const inicio = performance.now();
+    const paso = ahora => {
+      const prog = Math.min((ahora - inicio) / total, 1);
+      const tAct = t0 + prog * (t1 - t0);
+      const x = xDe(tAct);
+      const ph = document.getElementById('playhead');
+      ph.setAttribute('x1', x); ph.setAttribute('x2', x);
+      while (i < lista.length && lista[i].t <= tAct) {
+        sonar(lista[i]);
+        mostrarDetalle(lista[i]);
+        document.getElementById('status').textContent = `Año ${lista[i].anio}…`;
+        i++;
+      }
+      if (prog < 1) animando.raf = requestAnimationFrame(paso);
+      else setTimeout(detener, 3000);
+    };
+    animando.raf = requestAnimationFrame(paso);
+  }
 }
 
 btnPlay.addEventListener('click', reproducir);

@@ -46,7 +46,7 @@
   .tamanos { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
   .tamanos svg { width: auto; display: inline-block; vertical-align: middle; }
   .legend span.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; vertical-align: baseline; }
-  .tick text { font-size: 11px; fill: var(--muted); }
+  .tick text { font-size: 15px; font-weight: 600; fill: var(--ink); }
   .axis-label { font-size: 11px; fill: var(--muted); }
   circle.q { fill: var(--c); fill-opacity: 0.45; stroke: var(--c); stroke-width: 1.5; cursor: pointer; transition: stroke-width .1s; }
   circle.q:hover, circle.q.sel { stroke: var(--ink); stroke-width: 2; }
@@ -84,7 +84,7 @@
           <input id="hasta" type="range" min="1910" max="2026" step="1" value="2026">
         </label>
         <label>Ancho del gráfico: <b id="vZoom">4×</b>
-          <input id="zoom" type="range" min="1" max="8" step="0.5" value="4">
+          <input id="zoom" type="range" min="2" max="8" step="0.5" value="4">
         </label>
         <label>Tiempo por terremoto: <b id="vRitmo">1,5 s</b>
           <input id="ritmo" type="range" min="0.5" max="4" step="0.25" value="1.5">
@@ -164,7 +164,7 @@ const radio = mag => 5 * Math.pow(10, 0.28 * (mag - 7));
 const svg = document.getElementById('chart');
 const NS = 'http://www.w3.org/2000/svg';
 let W = 1000;   // ancho del gráfico en unidades del SVG: crece con el control "Ancho del gráfico"
-const H = 640, M = { l: 8, r: 20, t: 16, b: 36 };
+const H = 640, M = { l: 30, r: 30, t: 16, b: 44 };
 let iw = W - M.l - M.r;
 const ih = H - M.t - M.b;
 const LAT_N = -17, LAT_S = -56;
@@ -241,7 +241,7 @@ function colocarEjeY() {
   const k = svg.clientHeight / H;
   const pon = (texto, y) => { const sp = document.createElement('span'); sp.textContent = texto; sp.style.top = (y * k) + 'px'; eje.appendChild(sp); };
   ciudades.forEach(([nombre, lat]) => pon(nombre, yDe(lat)));
-  pon('↑ Norte', M.t + 4);
+  pon('↑ Norte', 4);
   pon('↓ Sur', H - M.b - 2);
 }
 window.addEventListener('resize', colocarEjeY);
@@ -262,12 +262,13 @@ function dibujar() {
 
   // eje de años
   const span = estado.hasta + 1 - estado.desde;
-  const paso = span > 60 ? 10 : span > 30 ? 5 : span > 12 ? 2 : 1;
+  const porAnio = iw / span;   // unidades del SVG por año: si hay espacio, se rotulan más años
+  const paso = [1, 2, 5, 10].find(p => p * porAnio >= 70) || 10;
   for (let a = Math.ceil(estado.desde / paso) * paso; a <= estado.hasta + 1; a += paso) {
     const x = xDe(a);
     g.appendChild(el('line', { x1: x, x2: x, y1: M.t, y2: H - M.b, stroke: '#efece5', 'stroke-width': 1 }));
     const t = el('g', { class: 'tick' });
-    t.appendChild(el('text', { x, y: H - M.b + 18, 'text-anchor': 'middle' }, a));
+    t.appendChild(el('text', { x, y: H - M.b + 24, 'text-anchor': 'middle' }, a));
     g.appendChild(t);
   }
 

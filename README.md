@@ -114,3 +114,8 @@ git push -u origin main --tags
 - **Qué cambió:** dos terremotos consecutivos en el tiempo quedan siempre al menos 24 px separados en horizontal, aunque estén lejos en latitud, para que el orden cronológico se lea de izquierda a derecha y la marca de reproducción no parezca devolverse; escala por defecto 4× (hasta 8×).
 - **Medición:** en los anchos 3×, 4×, 6× y 8×: 0 retrocesos de orden, 0 círculos solapados y paso mínimo de 24 px. Con 4×, el mayor desplazamiento respecto de la fecha exacta es de ~3,8 años; con 8×, ~1,7 años.
 - **Motivo:** en la reproducción, dos terremotos seguidos podían quedar a 1 px en horizontal (y muy lejos en vertical), y se veía como si la marca saltara hacia atrás.
+
+### Ejes legibles (posterior al tag v2)
+
+- **Qué cambió:** las etiquetas de los años son más grandes y en negrita, la primera ya no se corta, y al ensanchar el gráfico se rotulan más años (cada 5 años a 4×, cada año a 8×); el ancho mínimo del gráfico pasa a 2× (con menos no caben 66 terremotos separados 24 px).
+- **Motivo:** al ensanchar el gráfico los años quedaron diminutos y el primero aparecía cortado ("900").

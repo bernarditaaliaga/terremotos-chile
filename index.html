@@ -244,7 +244,7 @@ function mostrarDetalle(e) {
 }
 
 // ---------- Sonificación ----------
-// Magnitud -> tono (más grave = más fuerte) y duración (más largo = más fuerte).
+// Magnitud -> tono (más grave = más fuerte, entre 260 y 100 Hz) y duración (más largo = más fuerte).
 // Profundidad -> timbre (áspero superficial, liso intermedio, sordo y lejano profundo).
 let ctx = null, ruido = null;
 
@@ -262,9 +262,9 @@ function iniciarAudio() {
 function sonar(e) {
   iniciarAudio();
   const clase = claseProf(e.prof);
-  const f = 180 * Math.pow(2, -(e.mag - 7) * 0.8);   // 7.0 -> 180 Hz, 9.5 -> 45 Hz
+  const f = 260 * Math.pow(2, -(e.mag - 7) * 0.55);  // 7.0 -> 260 Hz, 9.5 -> 100 Hz (audible en parlantes de notebook)
   const dur = 0.5 + (e.mag - 7) * 1.3;                // 7.0 -> 0.5 s, 9.5 -> 3.75 s
-  const pico = 0.12 + (e.mag - 7) * 0.05;             // el volumen casi no cambia: lo cargan tono, duración y timbre
+  const pico = 0.22 + (e.mag - 7) * 0.04;             // el volumen cambia poco: lo cargan tono, duración y timbre
   const t0 = ctx.currentTime;
   const ataque = clase === 'prof' ? 0.25 : clase === 'med' ? 0.08 : 0.02;
 
@@ -280,9 +280,19 @@ function sonar(e) {
   osc.frequency.exponentialRampToValueAtTime(f, t0 + Math.min(dur, 0.6));
   const lp = ctx.createBiquadFilter();
   lp.type = 'lowpass';
-  lp.frequency.value = clase === 'sup' ? f * 6 : clase === 'med' ? f * 3 : f * 1.5;
+  lp.frequency.value = clase === 'sup' ? f * 6 : clase === 'med' ? f * 3 : f * 2.5;
   osc.connect(lp); lp.connect(master);
   osc.start(t0); osc.stop(t0 + dur + 0.05);
+
+  // armónico una octava arriba: los parlantes chicos no reproducen bien los graves, pero el oído sigue "oyendo" el tono grave
+  const osc2 = ctx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(f * 2.3, t0);
+  osc2.frequency.exponentialRampToValueAtTime(f * 2, t0 + Math.min(dur, 0.6));
+  const g2 = ctx.createGain();
+  g2.gain.value = 0.45;
+  osc2.connect(g2); g2.connect(lp);
+  osc2.start(t0); osc2.stop(t0 + dur + 0.05);
 
   if (clase !== 'prof') {   // retumbo de ruido en los eventos más superficiales
     const n = ctx.createBufferSource();

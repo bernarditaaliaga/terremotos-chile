@@ -65,3 +65,8 @@ git push -u origin main --tags
   - Se agregó una leyenda de tamaños (M7, M8, M9) con el círculo de referencia.
   - Los círculos pasaron a ser más transparentes y con borde del color de su categoría de profundidad, para que se vean los eventos que se superponen (por ejemplo, los de 1960).
 - **Se mantiene igual:** datos, ejes, colores, filtros, rango de años y sonificación.
+
+### Ajuste de sonido (posterior al tag v2)
+
+- **Qué cambió:** el tono pasó de 180–45 Hz a 260–100 Hz según la magnitud (sigue siendo más grave = más fuerte), se agregó un armónico una octava arriba y se subió un poco el volumen base.
+- **Motivo:** en una prueba de escucha en un notebook casi no se oía el sonido de los terremotos grandes (45 Hz está bajo lo que reproducen los parlantes pequeños).

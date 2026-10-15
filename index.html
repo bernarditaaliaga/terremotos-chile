@@ -107,6 +107,7 @@
     </aside>
   </div>
 
+  <p class="fuente" id="version"></p>
   <p class="fuente">Datos: catálogo de terremotos del USGS (Servicio Geológico de EE. UU.), eventos de magnitud 7 o más entre 1900 y 2026 ubicados en Chile. Detalle del procesamiento en el README.</p>
 </main>
 
@@ -248,6 +249,7 @@ function mostrarDetalle(e) {
 // Magnitud -> tono (más grave = más fuerte, entre 320 y 90 Hz), duración, retumbo y temblor.
 // Latitud -> posición en el estéreo (norte a la izquierda, sur a la derecha).
 // Profundidad -> timbre (áspero superficial, liso intermedio, sordo y lejano profundo).
+const VERSION_SONIDO = 'sonido-3 (estéreo + escalonado)';
 let ctx = null, ruido = null, bus = null, ultimoInicio = 0;
 
 function iniciarAudio() {
@@ -277,7 +279,7 @@ function probarSonido() {
     o.connect(g); g.connect(ctx.destination);
     o.start(t0); o.stop(t0 + 0.65);
     document.getElementById('status').textContent =
-      `Tono de prueba enviado (audio: ${ctx.state}). Si no lo oyes, revisa el volumen y la salida de sonido del computador: el problema no es la página.`;
+      `Tono de prueba enviado (audio: ${ctx.state}, ${VERSION_SONIDO}). Si no lo oyes, revisa el volumen y la salida de sonido del computador: el problema no es la página.`;
   });
 }
 document.getElementById('btnTest').addEventListener('click', probarSonido);
@@ -473,6 +475,7 @@ document.getElementById('hasta').addEventListener('input', ev => {
   cont.append('Cada +1 de magnitud: ~32 veces más energía, ~3 veces más área.');
 })();
 
+document.getElementById('version').textContent = 'Versión del sonido: ' + VERSION_SONIDO;
 dibujar();
 </script>
 </body>

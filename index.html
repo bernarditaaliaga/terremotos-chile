@@ -51,7 +51,8 @@
   .chip input { accent-color: var(--ink); }
   .forma { font-size: 13px; line-height: 1; }
   .escala { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }
-  .escala i { width: 110px; height: 10px; border-radius: 5px; display: inline-block; }
+  .escala i { width: 110px; height: 10px; border-radius: 5px; display: inline-block; cursor: pointer; box-shadow: 0 0 0 1px rgba(31,36,48,.2); }
+  .escala .ojo { font-size: 0.75rem; color: var(--muted); }
   .barra label.mag { display: flex; align-items: center; gap: 8px; }
   .barra input[type=range] { width: 120px; }
   details.ajustes { font-size: 0.85rem; color: var(--muted); }
@@ -128,7 +129,7 @@
       <label class="mag">Magnitud mínima <b id="vMag">7.0</b>
         <input id="minMag" type="range" min="7" max="9" step="0.1" value="7">
       </label>
-      <span class="escala" title="Color = magnitud (el mismo dato que la altura)"><b>7</b><i id="gradiente"></i><b>9,5</b></span>
+      <span class="escala" title="Color = magnitud. Haz clic en la barra para oír cada magnitud"><b>7</b><i id="gradiente"></i><b>9,5</b><span class="ojo">🔊 clic</span></span>
       <details class="ajustes">
         <summary title="Ajustes de sonido">⚙ Ajustes</summary>
         <div class="cont">
@@ -175,7 +176,7 @@
 <script src="data.js?v=2"></script>
 <script src="chile.js?v=2"></script>
 <script>
-const VERSION_SONIDO = 'sonido-9 (retumbo de terremoto: grave = grande) · color = magnitud';
+const VERSION_SONIDO = 'sonido-10 (tono + ritmo + duración) · color = magnitud';
 
 // ---------- Datos ----------
 const eventos = TERREMOTOS.map(e => {
@@ -583,7 +584,7 @@ function mostrarTip(e, ancla) {
 function ocultarTip() { tip.hidden = true; }
 
 // ---------- Sonido ----------
-// Magnitud -> TONO y retumbo: los chicos son un "tac" agudo y seco; los grandes, un golpe muy grave y un retumbo largo con temblor.
+// Magnitud -> TONO (agudo a muy grave), RITMO (1 a 7 golpes encadenados) y DURACIÓN, más retumbo y temblor en los grandes.
 // Profundidad -> aspereza (más crujido en lo superficial) y ataque (más lento en lo profundo). Latitud -> estéreo (norte a la izquierda).
 let busTone = null, ajusteSync = 0, ultimoNodos = null;
 function atenuar(nodos) {   // desvanece rápido el sonido anterior para que no se pisen las colas
@@ -625,10 +626,14 @@ function sonarTone(e, enCola) {
   if (!busTone) busTone = new Tone.Limiter(-3).toDestination();   // evita saturación
   const clase = claseProf(e.prof);
   const fuerza = (e.mag - 7) / 2.5;                          // 0 (M7,0) a 1 (M9,5)
-  const dur = 0.5 + 2.6 * fuerza;                            // 0,5 s -> 3,1 s
-  const fGolpe = 200 * Math.pow(38 / 200, fuerza);           // golpe: 200 Hz (agudo) -> 38 Hz (muy grave)
-  const corte = 2200 * Math.pow(0.04, fuerza);               // el retumbo se oscurece: 2200 Hz -> 88 Hz
+  // Tres señales que el oído distingue bien: TONO (agudo -> muy grave), RITMO (1 golpe -> 7 golpes encadenados) y DURACIÓN.
+  const nGolpes = 1 + Math.round(fuerza * 6);                // M7: 1 golpe · M8: 4 · M9,5: 7
+  const hueco = 0.34 - 0.12 * fuerza;                        // separación entre golpes: 0,34 s -> 0,22 s
+  const F = 880 * Math.pow(55 / 880, fuerza);                // tono: 880 Hz (muy agudo) -> 55 Hz (muy grave)
+  const durGolpe = 0.3 + 1.3 * fuerza;                       // cada golpe dura más cuanto mayor es el terremoto
+  const dur = (nGolpes - 1) * hueco + durGolpe + 0.3;
   const asp = clase === 'sup' ? 0 : clase === 'med' ? -4 : -8;   // dB de aspereza según la profundidad
+  const extra = 9 * fuerza;                                  // los graves se oyen menos: se compensa con volumen
   const t = Tone.now();
   const nodos = [];
   const nodo = n => (nodos.push(n), n);
@@ -637,43 +642,48 @@ function sonarTone(e, enCola) {
 
   const pan = nodo(new Tone.Panner(panDe(e))).connect(busTone);
   let salida = pan;
-  if (fuerza > 0.3) salida = nodo(new Tone.Tremolo(4 + 6 * fuerza, 0.3 + 0.4 * fuerza).start()).connect(pan);   // temblor en los grandes
+  if (fuerza > 0.3) salida = nodo(new Tone.Tremolo(4 + 6 * fuerza, 0.25 + 0.35 * fuerza).start()).connect(pan);   // temblor en los grandes
 
-  // retumbo: ruido marrón filtrado, el sonido típico de un terremoto
-  const filtro = nodo(new Tone.Filter({ type: 'lowpass', frequency: corte, Q: 1 })).connect(salida);
+  // los golpes: una nota por golpe, cada una un poco más débil (como las réplicas), con armónicos para que el grave se oiga
+  const filtroV = nodo(new Tone.Filter(Math.max(900, F * 8), 'lowpass')).connect(salida);
+  const voz = nodo(new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'sawtooth' },
+    envelope: { attack: clase === 'prof' ? 0.04 : 0.004, decay: durGolpe, sustain: 0, release: 0.1 },
+    volume: -13 + extra + asp * 0.5
+  })).connect(filtroV);
+  voz.maxPolyphony = 8;
+  for (let k = 0; k < nGolpes; k++) {
+    const desvio = 1 + (k % 2 ? 0.025 : -0.025) * fuerza;    // un poco desafinados: suena a roca, no a música
+    voz.triggerAttackRelease(F * desvio, durGolpe * 0.6, t + k * hueco, Math.max(0.35, 1 - 0.1 * k));
+  }
+
+  // golpe de fondo en cada golpe (los chicos solo tienen el "tac" inicial)
+  if (fuerza > 0.25) {
+    const golpe = nodo(new Tone.MembraneSynth({
+      pitchDecay: 0.05, octaves: 2.5,
+      envelope: { attack: 0.003, decay: 0.35, sustain: 0, release: 0.1 },
+      volume: -12 + extra
+    })).connect(salida);
+    for (let k = 0; k < nGolpes; k++) golpe.triggerAttackRelease(Math.max(F, 40), 0.1, t + k * hueco + 0.001 * k, Math.max(0.4, 1 - 0.1 * k));
+  }
+
+  // retumbo continuo que se oscurece con la magnitud (ruido marrón filtrado)
+  const corte = 2200 * Math.pow(0.05, fuerza);
+  const filtroR = nodo(new Tone.Filter({ type: 'lowpass', frequency: corte, Q: 1 })).connect(salida);
   const retumbo = nodo(new Tone.NoiseSynth({
     noise: { type: 'brown' },
-    envelope: { attack: clase === 'prof' ? 0.18 : 0.02, decay: dur, sustain: 0, release: 0.3 },
-    volume: -6 + 8 * fuerza + asp
-  })).connect(filtro);
+    envelope: { attack: clase === 'prof' ? 0.15 : 0.02, decay: dur, sustain: 0, release: 0.3 },
+    volume: -20 + 8 * fuerza + asp
+  })).connect(filtroR);
   retumbo.triggerAttackRelease(dur, t);
 
-  // golpe seco: de "tac" agudo a golpe muy grave
-  const golpe = nodo(new Tone.MembraneSynth({
-    pitchDecay: 0.06, octaves: 3,
-    envelope: { attack: 0.003, decay: Math.min(dur, 0.3 + 1.5 * fuerza), sustain: 0, release: 0.2 },
-    volume: -8 + 4 * fuerza
-  })).connect(salida);
-  golpe.triggerAttackRelease(fGolpe, 0.1, t);
-
-  // crujido de la roca al inicio (más en lo superficial, y más fuerte en los chicos)
+  // crujido de la roca al inicio, más marcado en los chicos y en lo superficial
   const crujido = nodo(new Tone.NoiseSynth({
     noise: { type: 'pink' },
-    envelope: { attack: 0.001, decay: 0.05 + 0.1 * (1 - fuerza), sustain: 0, release: 0.02 },
-    volume: -12 - 8 * fuerza + (clase === 'sup' ? 3 : clase === 'med' ? -1 : -6)
+    envelope: { attack: 0.001, decay: 0.05 + 0.08 * (1 - fuerza), sustain: 0, release: 0.02 },
+    volume: -13 - 6 * fuerza + (clase === 'sup' ? 3 : clase === 'med' ? -1 : -6)
   })).connect(nodo(new Tone.Filter(1800, 'highpass')).connect(pan));
   crujido.triggerAttackRelease(0.05, t);
-
-  // grave sostenido en los grandes: con armónicos, para que se oiga aunque el parlante sea chico
-  if (fuerza > 0.35) {
-    const filtroS = nodo(new Tone.Filter(Math.max(300, fGolpe * 8), 'lowpass')).connect(salida);
-    const sub = nodo(new Tone.Synth({
-      oscillator: { type: 'sawtooth' },
-      envelope: { attack: clase === 'prof' ? 0.2 : 0.04, decay: dur, sustain: 0, release: 0.3 },
-      volume: -24 + 16 * fuerza
-    })).connect(filtroS);
-    sub.triggerAttackRelease(Math.max(fGolpe, 40), dur, t);
-  }
 
   setTimeout(() => nodos.forEach(n => { try { n.dispose(); } catch (_) {} }), (dur + 2.5) * 1000);
   resaltarPunto(e, dur);
@@ -782,6 +792,15 @@ function reproducir() {
 btnPlay.addEventListener('click', reproducir);
 btnStop.addEventListener('click', detener);
 document.getElementById('btnTest').addEventListener('click', probarSonido);
+// Clic en la barra de colores: se oye esa magnitud (para comparar suave vs fuerte al instante)
+document.getElementById('gradiente').addEventListener('click', ev => {
+  const r = ev.currentTarget.getBoundingClientRect();
+  const mag = 7 + 2.5 * Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
+  iniciarAudio().then(() => {
+    sonar({ mag, prof: 25, lat: -33, lon: -71, fecha: '', anio: 0 });
+    document.getElementById('status').textContent = `Así suena un terremoto de magnitud ${fmtMag(mag)}`;
+  });
+});
 
 // ---------- Controles ----------
 function refrescar() { detener(); dibujar(); }

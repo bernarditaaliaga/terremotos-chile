@@ -58,7 +58,7 @@
   details.ajustes summary { cursor: pointer; list-style: none; }
   details.ajustes .cont { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; padding: 8px 0 2px; }
   #status { font-size: 0.85rem; color: var(--muted); min-height: 1.2em; margin-bottom: 4px; }
-  .cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) clamp(250px, 26vw, 360px); gap: 8px; align-items: start; }
+  .cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) clamp(190px, 21vw, 240px); gap: 8px; align-items: start; }
   @media (max-width: 760px) { .cuerpo { grid-template-columns: 1fr; } }
   .lienzoWrap { position: relative; }
   #ejeY { position: absolute; left: 0; top: 0; width: 40px; height: 100%; pointer-events: none; }
@@ -82,7 +82,7 @@
 
   /* Mapa */
   .mapaWrap { position: relative; }
-  #mapa { border-radius: 10px; width: 100%; height: auto; max-height: 760px; cursor: grab; touch-action: none; }
+  #mapa { border-radius: 10px; width: 100%; height: auto; cursor: grab; touch-action: none; }
   #mapa.arrastrando { cursor: grabbing; }
   .zoomBtns { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; }
   button.zb { padding: 1px 9px; font-size: 1.15rem; line-height: 1.3; background: #fff; color: var(--ink); border: 1px solid #b8c4cf; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
@@ -93,7 +93,7 @@
   #mapa .oceano { font-size: calc(10.5px / var(--z, 1)); font-style: italic; fill: #4b6a82; }
   #mapa .flecha { stroke: #4b6a82; stroke-width: 1.6; }
   #mapa .flechaPunta { fill: #4b6a82; }
-  #mapa .ep { stroke: rgba(31, 36, 48, 0.4); stroke-width: 0.5; opacity: 0.9; vector-effect: non-scaling-stroke; cursor: pointer; }
+  #mapa .ep { stroke: rgba(31, 36, 48, 0.4); stroke-width: 0.5; opacity: 0.9; vector-effect: non-scaling-stroke; cursor: pointer; transform-box: fill-box; transform-origin: center; transform: scale(calc(2 / (1 + var(--z, 1)))); }
   #mapa .ep.fantasma { opacity: 0.18; stroke: none; cursor: default; pointer-events: none; }
   #mapa .ep.sel { stroke: var(--ink); stroke-width: 1.6; opacity: 1; }
   #mapa .pulso { fill: none; stroke: var(--ink); stroke-width: 1.8; transform-box: fill-box; transform-origin: center; animation: onda 1.3s ease-out forwards; }
@@ -132,8 +132,8 @@
       <details class="ajustes">
         <summary title="Ajustes de sonido">⚙ Ajustes</summary>
         <div class="cont">
-          <label>Tiempo por terremoto: <b id="vRitmo">1,5 s</b>
-            <input id="ritmo" type="range" min="0.5" max="4" step="0.25" value="1.5">
+          <label>Tiempo por terremoto: <b id="vRitmo">2,5 s</b>
+            <input id="ritmo" type="range" min="1" max="6" step="0.5" value="2.5">
           </label>
           <label>Sincronía sonido-gráfico: <b id="vSync">0 ms</b>
             <input id="sync" type="range" min="0" max="600" step="25" value="0">
@@ -248,7 +248,7 @@ function marcador(clase, x, y, r, color) {
 const svg = document.getElementById('chart');
 const NS = 'http://www.w3.org/2000/svg';
 let W = 800;
-const H = 660, M = { l: 14, r: 24, t: 40, b: 46 };
+const H = 470, M = { l: 14, r: 24, t: 34, b: 46 };
 let iw = W - M.l - M.r;
 const ih = H - M.t - M.b;
 const M_MIN = 6.6, M_MAX = 9.6;   // el eje parte en 6,6 para que los M7 tengan barra visible; las marcas empiezan en 7
@@ -388,10 +388,10 @@ function dibujar() {
     s.appendChild(c);
     if (!fantasma) {
       s.appendChild(el('rect', { x: o.x - PASO / 2, y: o.y - RADIO - 2, width: PASO, height: BASE - o.y + RADIO + 2, fill: 'transparent' }));   // zona sensible
-      s.addEventListener('mouseenter', () => { mostrarTip(e); mostrarGuia(e, true); marcarMapa(e, true); });
-      s.addEventListener('mouseleave', () => { if (!animando) ocultarTip(); mostrarGuia(e, false); marcarMapa(e, estado.sel === e); });
-      s.addEventListener('focus', () => { mostrarTip(e); marcarMapa(e, true); });
-      s.addEventListener('blur', () => { if (!animando) ocultarTip(); marcarMapa(e, estado.sel === e); });
+      s.addEventListener('mouseenter', () => { mostrarTip(e); mostrarGuia(e, true); marcarMapa(e, true); if (!animando) enfocarMapa(e); });
+      s.addEventListener('mouseleave', () => { if (!animando) { ocultarTip(); verTodoElMapa(350); } mostrarGuia(e, false); marcarMapa(e, estado.sel === e); });
+      s.addEventListener('focus', () => { mostrarTip(e); marcarMapa(e, true); if (!animando) enfocarMapa(e); });
+      s.addEventListener('blur', () => { if (!animando) { ocultarTip(); verTodoElMapa(350); } marcarMapa(e, estado.sel === e); });
       s.addEventListener('click', () => { estado.sel = e; marcar(); sonar(e); ondaMapa(e); mostrarTip(e); });
       s.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); s.dispatchEvent(new Event('click')); } });
     }
@@ -479,7 +479,30 @@ function aplicarVB() {
   mapa.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
   mapa.style.setProperty('--z', (MW / vb.w).toFixed(3));
 }
-function zoomMapa(factor, px = 0.5, py = 0.5) {   // px, py: punto fijo del zoom (0 a 1 dentro del mapa)
+// Zoom automático: el mapa "vuela" suavemente hasta el epicentro (al pasar por una barra o durante la reproducción)
+let animVB = null, resetMapaT = null;
+function volarVB(obj, ms) {
+  cancelAnimationFrame(animVB);
+  const d = { ...vb }, t0 = performance.now();
+  const paso = ahora => {
+    const f = Math.min(1, (ahora - t0) / ms), k = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2;
+    vb.x = d.x + (obj.x - d.x) * k; vb.y = d.y + (obj.y - d.y) * k; vb.w = d.w + (obj.w - d.w) * k;
+    aplicarVB();
+    if (f < 1) animVB = requestAnimationFrame(paso);
+  };
+  animVB = requestAnimationFrame(paso);
+}
+function enfocarMapa(e, ms = 650) {
+  clearTimeout(resetMapaT);
+  const [x, y] = proyMapa(e.lon, e.lat), z = 4, w = MW / z, h = MH / z;
+  volarVB({ x: Math.min(Math.max(x - w / 2, 0), MW - w), y: Math.min(Math.max(y - h / 2, 0), MH - h), w }, ms);
+}
+function verTodoElMapa(demora = 0, ms = 600) {
+  clearTimeout(resetMapaT);
+  resetMapaT = setTimeout(() => volarVB({ x: 0, y: 0, w: MW }, ms), demora);
+}
+function zoomMapa(factor, px = 0.5, py = 0.5) {
+  cancelAnimationFrame(animVB); clearTimeout(resetMapaT);   // px, py: punto fijo del zoom (0 a 1 dentro del mapa)
   const nw = Math.min(MW, Math.max(MW / 10, vb.w * factor)), nh = nw * MH / MW;
   vb.x += (vb.w - nw) * px; vb.y += (vb.h - nh) * py; vb.w = nw; vb.h = nh;
   aplicarVB();
@@ -490,7 +513,7 @@ mapa.addEventListener('wheel', ev => {
   zoomMapa(ev.deltaY < 0 ? 0.8 : 1.25, (ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height);
 }, { passive: false });
 let arrastre = null;
-mapa.addEventListener('pointerdown', ev => { arrastre = { x: ev.clientX, y: ev.clientY, mov: 0 }; });
+mapa.addEventListener('pointerdown', ev => { cancelAnimationFrame(animVB); clearTimeout(resetMapaT); arrastre = { x: ev.clientX, y: ev.clientY, mov: 0 }; });
 window.addEventListener('pointermove', ev => {
   if (!arrastre) return;
   const r = mapa.getBoundingClientRect(), dx = ev.clientX - arrastre.x, dy = ev.clientY - arrastre.y;
@@ -501,10 +524,10 @@ window.addEventListener('pointermove', ev => {
   aplicarVB();
 });
 window.addEventListener('pointerup', () => { arrastre = null; mapa.classList.remove('arrastrando'); setTimeout(() => { arrastroMapa = false; }, 0); });
-mapa.addEventListener('dblclick', () => { vb = { x: 0, y: 0, w: MW, h: MH }; aplicarVB(); });
+mapa.addEventListener('dblclick', () => verTodoElMapa(0, 400));
 document.getElementById('zMas').addEventListener('click', () => zoomMapa(0.7));
 document.getElementById('zMenos').addEventListener('click', () => zoomMapa(1 / 0.7));
-document.getElementById('zReset').addEventListener('click', () => { vb = { x: 0, y: 0, w: MW, h: MH }; aplicarVB(); });
+document.getElementById('zReset').addEventListener('click', () => verTodoElMapa(0, 400));
 
 function marcarMapa(e, on) {
   const c = puntosMapa.get(e);
@@ -688,7 +711,7 @@ function probarSonido() {
 // ---------- Reproducción cronológica ----------
 const btnPlay = document.getElementById('btnPlay');
 const btnStop = document.getElementById('btnStop');
-let RITMO = 1500;   // ms entre un terremoto y el siguiente (ajustable en vivo): uno por vez, sin que se pisen
+let RITMO = 2500;   // ms entre un terremoto y el siguiente (ajustable en vivo): uno por vez, sin que se pisen
 
 function textoEstado() {
   const n = visibles().length, t = enRango().length;
@@ -702,6 +725,7 @@ function detener() {
   const ph = document.getElementById('playhead');
   if (ph) { ph.setAttribute('x1', -10); ph.setAttribute('x2', -10); }
   ocultarTip();
+  verTodoElMapa(0, 600);
   document.getElementById('status').textContent = textoEstado();
 }
 
@@ -740,6 +764,7 @@ function reproducir() {
       const kv = Math.min(Math.floor(av), lista.length - 1);
       while (iv <= kv) {
         mostrarTip(lista[iv]);
+        enfocarMapa(lista[iv], Math.min(900, RITMO * 0.4));
         document.getElementById('status').textContent = `${lista[iv].anio} · ${iv + 1} de ${lista.length}`;
         iv++;
       }

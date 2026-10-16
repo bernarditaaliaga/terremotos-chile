@@ -144,3 +144,9 @@ git push -u origin main --tags
 
 - **Qué cambió:** se quitó la franja naranja "Gran terremoto · M8+" y la "M" del eje (no se entendían y metían ruido visual); el mapa es más grande (columna de hasta 360 px) y se puede hacer zoom (rueda del mouse o botones +, − y ⟲), arrastrar y volver con doble clic; los puntos del mapa muestran el detalle al pasar el cursor y suenan al hacer clic, igual que las barras; el gráfico es más alto para equilibrar su altura con la del mapa.
 - **Motivo:** retroalimentación de la propia autora al ver la versión: lo que no se entiende se borra (data-ink, cápsula 19), y para saber dónde ocurrió cada terremoto el mapa debe ser grande y explorable (mantra de Shneiderman: zoom y filtro).
+
+### V3: zoom automático del mapa y vuelta a las proporciones anteriores
+
+- **Qué cambió:** el mapa y el gráfico vuelven a las proporciones anteriores (al agrandarlos quedaba como si se hubiera acercado toda la página). El mapa se explora con la rueda del mouse (zoom), arrastrando (desplazamiento) y con los botones +, − y ⟲. Al pasar el cursor por una barra, el mapa se acerca solo al epicentro (4×) y vuelve a mostrar todo Chile al salir. Durante "Escuchar la historia" el mapa sigue cada epicentro con una animación suave; por eso el ritmo por defecto pasa a 2,5 s por terremoto (ajustable de 1 a 6 s).
+- **Motivo:** se pidió un mapa navegable y que al señalar un punto se acercara a él; para que el movimiento alcance a verse la reproducción debe ser más lenta.
+- **Medición:** al pasar por una barra, el mapa queda a 4× con el epicentro centrado; al soltar, vuelve a la vista completa; en la reproducción el epicentro de cada evento queda visible a 4×.

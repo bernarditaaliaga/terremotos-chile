@@ -58,7 +58,7 @@
   details.ajustes summary { cursor: pointer; list-style: none; }
   details.ajustes .cont { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; padding: 8px 0 2px; }
   #status { font-size: 0.85rem; color: var(--muted); min-height: 1.2em; margin-bottom: 4px; }
-  .cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) clamp(180px, 21vw, 230px); gap: 8px; align-items: start; }
+  .cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) clamp(250px, 26vw, 360px); gap: 8px; align-items: start; }
   @media (max-width: 760px) { .cuerpo { grid-template-columns: 1fr; } }
   .lienzoWrap { position: relative; }
   #ejeY { position: absolute; left: 0; top: 0; width: 40px; height: 100%; pointer-events: none; }
@@ -81,16 +81,20 @@
   .ayuda { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
 
   /* Mapa */
-  #mapa { border-radius: 10px; }
+  .mapaWrap { position: relative; }
+  #mapa { border-radius: 10px; width: 100%; height: auto; max-height: 760px; cursor: grab; touch-action: none; }
+  #mapa.arrastrando { cursor: grabbing; }
+  .zoomBtns { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; }
+  button.zb { padding: 1px 9px; font-size: 1.15rem; line-height: 1.3; background: #fff; color: var(--ink); border: 1px solid #b8c4cf; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   #mapa .oceano-fondo { fill: #dbe9f1; }
   #mapa .vecino { fill: #ebe6da; stroke: #cfc8b8; stroke-width: 0.6; }
   #mapa .costa { fill: #fbf6ea; stroke: #8d8576; stroke-width: 1; }
-  #mapa .ciudad { font-size: 11px; fill: #4b5563; paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
-  #mapa .oceano { font-size: 9px; font-style: italic; fill: #4b6a82; }
+  #mapa .ciudad { font-size: calc(12.5px / var(--z, 1)); fill: #4b5563; paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
+  #mapa .oceano { font-size: calc(10.5px / var(--z, 1)); font-style: italic; fill: #4b6a82; }
   #mapa .flecha { stroke: #4b6a82; stroke-width: 1.6; }
   #mapa .flechaPunta { fill: #4b6a82; }
-  #mapa .ep { stroke: rgba(31, 36, 48, 0.4); stroke-width: 0.5; opacity: 0.9; }
-  #mapa .ep.fantasma { opacity: 0.18; stroke: none; }
+  #mapa .ep { stroke: rgba(31, 36, 48, 0.4); stroke-width: 0.5; opacity: 0.9; vector-effect: non-scaling-stroke; cursor: pointer; }
+  #mapa .ep.fantasma { opacity: 0.18; stroke: none; cursor: default; pointer-events: none; }
   #mapa .ep.sel { stroke: var(--ink); stroke-width: 1.6; opacity: 1; }
   #mapa .pulso { fill: none; stroke: var(--ink); stroke-width: 1.8; transform-box: fill-box; transform-origin: center; animation: onda 1.3s ease-out forwards; }
   @keyframes onda { from { transform: scale(1); opacity: 0.95; } to { transform: scale(9); opacity: 0; } }
@@ -152,7 +156,14 @@
         </div>
         <div class="ayuda">👆 Cursor: detalle · Clic: escúchalo · 🔊 más grave y largo = más fuerte</div>
       </div>
-      <svg id="mapa" viewBox="0 0 230 470" role="img" aria-label="Mapa de Chile con los epicentros"></svg>
+      <div class="mapaWrap">
+        <svg id="mapa" viewBox="0 0 300 620" role="img" aria-label="Mapa de Chile con los epicentros. Se puede acercar con la rueda del mouse y arrastrar."></svg>
+        <div class="zoomBtns">
+          <button class="zb" id="zMas" title="Acercar" aria-label="Acercar el mapa">+</button>
+          <button class="zb" id="zMenos" title="Alejar" aria-label="Alejar el mapa">−</button>
+          <button class="zb" id="zReset" title="Ver todo Chile" aria-label="Ver todo Chile">⟲</button>
+        </div>
+      </div>
     </div>
     <div id="tip" hidden></div>
   </section>
@@ -237,7 +248,7 @@ function marcador(clase, x, y, r, color) {
 const svg = document.getElementById('chart');
 const NS = 'http://www.w3.org/2000/svg';
 let W = 800;
-const H = 470, M = { l: 14, r: 24, t: 34, b: 46 };
+const H = 660, M = { l: 14, r: 24, t: 40, b: 46 };
 let iw = W - M.l - M.r;
 const ih = H - M.t - M.b;
 const M_MIN = 6.6, M_MAX = 9.6;   // el eje parte en 6,6 para que los M7 tengan barra visible; las marcas empiezan en 7
@@ -302,7 +313,6 @@ function colocarEjeY() {
   const k = svg.clientHeight / H;
   const pon = (texto, y) => { const sp = document.createElement('span'); sp.textContent = texto; sp.style.top = (y * k) + 'px'; eje.appendChild(sp); };
   [7, 7.5, 8, 8.5, 9, 9.5].forEach(m => pon(fmtMag(m), yMag(m)));
-  pon('M', 12);
 }
 // El gráfico se ajusta al ancho real de su contenedor: se redibuja cuando ese ancho cambia (al cargar la página o al cambiar la ventana).
 let anchoUsado = 0, tamTimer = null;
@@ -328,10 +338,6 @@ function dibujar() {
   svg.innerHTML = '';
   const g = el('g');
   svg.appendChild(g);
-
-  // franja de los grandes terremotos (M8+), con su etiqueta
-  g.appendChild(el('rect', { x: M.l, y: M.t, width: W - M.l - M.r, height: yMag(8) - M.t, fill: '#fff1e3' }));
-  g.appendChild(el('text', { class: 'banda', x: W - M.r - 6, y: M.t + 14, 'text-anchor': 'end' }, 'GRAN TERREMOTO · M8+'));
 
   // marcas de magnitud
   [7, 7.5, 8, 8.5, 9, 9.5].forEach(m => {
@@ -412,12 +418,12 @@ function marcar() {
 
 // ---------- Mapa de Chile (con océano, países vecinos y la placa de Nazca) ----------
 const mapa = document.getElementById('mapa');
-const MH = 470, MW = 230, MPAD = 12;
+const MH = 620, MW = 300, MPAD = 12;
 const LAT_N = -17, LAT_S = -56;
 const KM = (MH - 2 * MPAD) / (LAT_N - LAT_S);          // píxeles por grado de latitud
 const COSF = Math.cos(36.5 * Math.PI / 180);            // la longitud se acorta con la latitud
 const lonMin = Math.min(...CHILE_MAPA.flat().map(p => p[0]));
-const proyMapa = (lon, lat) => [62 + (lon - lonMin) * COSF * KM, MPAD + (LAT_N - lat) * KM];
+const proyMapa = (lon, lat) => [92 + (lon - lonMin) * COSF * KM, MPAD + (LAT_N - lat) * KM];
 const ciudades = [
   ['Arica', -70.31, -18.48], ['Antofagasta', -70.4, -23.65], ['Valparaíso', -71.62, -33.05],
   ['Concepción', -73.05, -36.83], ['Valdivia', -73.25, -39.81], ['Punta Arenas', -70.91, -53.16]
@@ -435,30 +441,70 @@ function dibujarMapa(todos, visSet) {
 
   // la placa de Nazca se hunde bajo Sudamérica: por eso hay terremotos (esquema)
   const yN = proyMapa(-75, -27)[1];
-  g.appendChild(el('line', { class: 'flecha', x1: 6, x2: 44, y1: yN, y2: yN }));
-  g.appendChild(el('polygon', { class: 'flechaPunta', points: `44,${yN - 4} 53,${yN} 44,${yN + 4}` }));
-  g.appendChild(el('text', { class: 'oceano', x: 6, y: yN - 8 }, 'Placa de Nazca'));
-  g.appendChild(el('text', { class: 'oceano', x: 6, y: yN + 18 }, 'se hunde bajo'));
-  g.appendChild(el('text', { class: 'oceano', x: 6, y: yN + 29 }, 'Sudamérica'));
-  g.appendChild(el('text', { class: 'oceano', transform: 'translate(20,410) rotate(-90)' }, 'Océano Pacífico'));
+  g.appendChild(el('line', { class: 'flecha', x1: 8, x2: 62, y1: yN, y2: yN }));
+  g.appendChild(el('polygon', { class: 'flechaPunta', points: `62,${yN - 5} 73,${yN} 62,${yN + 5}` }));
+  g.appendChild(el('text', { class: 'oceano', x: 8, y: yN - 9 }, 'Placa de Nazca'));
+  g.appendChild(el('text', { class: 'oceano', x: 8, y: yN + 20 }, 'se hunde bajo'));
+  g.appendChild(el('text', { class: 'oceano', x: 8, y: yN + 33 }, 'Sudamérica'));
+  g.appendChild(el('text', { class: 'oceano', transform: 'translate(24,520) rotate(-90)' }, 'Océano Pacífico'));
 
   ciudades.forEach(([nombre, lon, lat]) => {
     const [x, y] = proyMapa(lon, lat);
-    g.appendChild(el('line', { x1: x, x2: 150, y1: y, y2: y, stroke: '#b9b2a2', 'stroke-width': 0.8 }));
+    g.appendChild(el('line', { x1: x, x2: 214, y1: y, y2: y, stroke: '#b9b2a2', 'stroke-width': 0.8 }));
     g.appendChild(el('circle', { cx: x, cy: y, r: 2, fill: '#4b5563' }));
-    g.appendChild(el('text', { class: 'ciudad', x: 154, y: y + 4 }, nombre));
+    g.appendChild(el('text', { class: 'ciudad', x: 218, y: y + 4 }, nombre));
   });
   puntosMapa = new Map();
   [...todos.filter(e => !visSet.has(e)), ...todos.filter(e => visSet.has(e))].forEach(e => {
     const [x, y] = proyMapa(e.lon, e.lat);
     const fantasma = !visSet.has(e);
-    const c = marcador(claseProf(e.prof), x, y, 2.9, colorMag(e.mag));
+    const c = marcador(claseProf(e.prof), x, y, 3.8, colorMag(e.mag));
     c.setAttribute('class', 'ep' + (fantasma ? ' fantasma' : '') + (estado.sel === e ? ' sel' : ''));
     c._e = e;
     g.appendChild(c);
-    if (!fantasma) puntosMapa.set(e, c);
+    if (!fantasma) {
+      puntosMapa.set(e, c);
+      c.addEventListener('mouseenter', () => { mostrarTip(e, c); marcarMapa(e, true); });
+      c.addEventListener('mouseleave', () => { if (!animando) ocultarTip(); marcarMapa(e, estado.sel === e); });
+      c.addEventListener('click', () => { if (arrastroMapa) return; estado.sel = e; marcar(); sonar(e); ondaMapa(e); mostrarTip(e, c); });
+    }
   });
 }
+
+// Zoom del mapa: rueda del mouse, botones +/−/⟲, arrastrar para moverlo y doble clic para ver todo Chile
+let vb = { x: 0, y: 0, w: MW, h: MH }, arrastroMapa = false;
+function aplicarVB() {
+  vb.w = Math.min(MW, Math.max(MW / 10, vb.w)); vb.h = vb.w * MH / MW;
+  vb.x = Math.min(Math.max(vb.x, 0), MW - vb.w); vb.y = Math.min(Math.max(vb.y, 0), MH - vb.h);
+  mapa.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  mapa.style.setProperty('--z', (MW / vb.w).toFixed(3));
+}
+function zoomMapa(factor, px = 0.5, py = 0.5) {   // px, py: punto fijo del zoom (0 a 1 dentro del mapa)
+  const nw = Math.min(MW, Math.max(MW / 10, vb.w * factor)), nh = nw * MH / MW;
+  vb.x += (vb.w - nw) * px; vb.y += (vb.h - nh) * py; vb.w = nw; vb.h = nh;
+  aplicarVB();
+}
+mapa.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  const r = mapa.getBoundingClientRect();
+  zoomMapa(ev.deltaY < 0 ? 0.8 : 1.25, (ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height);
+}, { passive: false });
+let arrastre = null;
+mapa.addEventListener('pointerdown', ev => { arrastre = { x: ev.clientX, y: ev.clientY, mov: 0 }; });
+window.addEventListener('pointermove', ev => {
+  if (!arrastre) return;
+  const r = mapa.getBoundingClientRect(), dx = ev.clientX - arrastre.x, dy = ev.clientY - arrastre.y;
+  arrastre.mov += Math.abs(dx) + Math.abs(dy);
+  if (arrastre.mov > 4) { arrastroMapa = true; mapa.classList.add('arrastrando'); }
+  vb.x -= dx / r.width * vb.w; vb.y -= dy / r.height * vb.h;
+  arrastre.x = ev.clientX; arrastre.y = ev.clientY;
+  aplicarVB();
+});
+window.addEventListener('pointerup', () => { arrastre = null; mapa.classList.remove('arrastrando'); setTimeout(() => { arrastroMapa = false; }, 0); });
+mapa.addEventListener('dblclick', () => { vb = { x: 0, y: 0, w: MW, h: MH }; aplicarVB(); });
+document.getElementById('zMas').addEventListener('click', () => zoomMapa(0.7));
+document.getElementById('zMenos').addEventListener('click', () => zoomMapa(1 / 0.7));
+document.getElementById('zReset').addEventListener('click', () => { vb = { x: 0, y: 0, w: MW, h: MH }; aplicarVB(); });
 
 function marcarMapa(e, on) {
   const c = puntosMapa.get(e);
@@ -486,15 +532,22 @@ function sacudir(e) {
 
 // ---------- Detalle al pasar el cursor ----------
 const tip = document.getElementById('tip');
-function mostrarTip(e) {
+function mostrarTip(e, ancla) {
   const fecha = new Date(e.fecha + 'T12:00:00Z').toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
   const ratio = Math.pow(10, 1.5 * (e.mag - 7));   // cada punto de magnitud = ~32 veces más energía
   const energia = ratio < 1.5 ? 'la energía de un M7' : '≈ ' + (ratio >= 100 ? Math.round(ratio / 100) * 100 : Math.round(ratio)).toLocaleString('es-CL') + '× la energía de un M7';
   tip.innerHTML = `<b>${e.lugar}</b><br>${fecha}${e.hora ? ', ' + e.hora.slice(0, 5) + ' UTC' : ''}<br>Magnitud ${fmtMag(e.mag)} · ${Math.round(e.prof)} km (${nombreClase[claseProf(e.prof)].toLowerCase()})<br><span class="en">⚡ ${energia}</span>`;
   tip.hidden = false;
+  const tarjeta = document.getElementById('tarjeta').getBoundingClientRect();
+  if (ancla) {   // detalle junto a un punto del mapa
+    const r = ancla.getBoundingClientRect(), w2 = tip.offsetWidth;
+    const x2 = Math.min(Math.max(r.left - tarjeta.left + r.width / 2, w2 / 2 + 4), tarjeta.width - w2 / 2 - 4);
+    tip.style.left = x2 + 'px';
+    tip.style.top = Math.max(r.top - tarjeta.top - 6, tip.offsetHeight + 4) + 'px';
+    return;
+  }
   const dot = ultimaPos.get(e);
   if (!dot) return;
-  const tarjeta = document.getElementById('tarjeta').getBoundingClientRect();
   const lienzo = document.getElementById('lienzo');
   const lr = lienzo.getBoundingClientRect();
   let x = lr.left - tarjeta.left + dot.x - lienzo.scrollLeft;

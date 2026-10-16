@@ -164,3 +164,10 @@ git push -u origin main --tags
 - **Motivo:** no hay una respuesta teórica segura sobre qué polaridad se entiende mejor (para "tamaño" muchas personas asocian lo grande con lo grave; para "intensidad" muchas asocian "más" con "más agudo"), así que se deja elegir para probarlo con personas.
 - **Medición:** tono dominante 879 → 287 → 53 Hz (modo grave) y 53 → 164 → 855 Hz (modo agudo) para M7 → M8 → M9,5; el volumen eficaz sube con la magnitud en ambos modos (0,031 → 0,133 y 0,046 → 0,084).
 - **Pendiente:** definir la polaridad final según una prueba con usuarios (porcentaje de aciertos al decidir cuál de dos terremotos es el más fuerte, sin explicación previa).
+
+### V3: decisión del sonido (agudo y fuerte = más intenso)
+
+- **Decisión:** la magnitud se codifica con un tono que sube (de ~53 Hz, grave, en M7 a ~855 Hz, agudo, en M9,5), y con un volumen que también sube (rango de ~17 a 20 dB), además del ritmo (de 1 a 7 golpes) y la duración. Los tonos agudos y fuertes representan los terremotos mayores y los graves y suaves, los leves. Se mantiene el selector en "⚙ Ajustes" para poder comparar con la polaridad contraria.
+- **Motivo (rationale):** lo agudo y fuerte se percibe como más molesto y urgente, como en las alarmas auditivas (cápsula 27); eso calza con un terremoto mayor. Se combinan varias señales (tono, volumen, ritmo y duración) para que la diferencia no dependa de una sola.
+- **Medición:** tono dominante 53 / 94 / 164 / 287 / 498 / 855 Hz para M7 / 7,5 / 8 / 8,5 / 9 / 9,5; volumen eficaz de 0,012 a 0,083 (razón de ~7 veces); pico máximo 0,38.
+- **Limitación:** un M7 suena bajo y grave y puede costar oírlo en parlantes pequeños; no está validado con usuarios; el volumen depende del volumen del dispositivo.

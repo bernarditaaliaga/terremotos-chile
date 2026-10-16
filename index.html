@@ -136,8 +136,8 @@
         <div class="cont">
           <label>Tono del sonido:
             <select id="polaridad" title="Compara cuál se entiende mejor">
-              <option value="grave">grave = más fuerte</option>
-              <option value="agudo">agudo = más fuerte</option>
+              <option value="agudo" selected>agudo = más intenso</option>
+              <option value="grave">grave = más intenso</option>
             </select>
           </label>
           <label>Tiempo por terremoto: <b id="vRitmo">2,5 s</b>
@@ -162,7 +162,7 @@
                  aria-label="Terremotos de magnitud 7 o más en Chile: año en el eje horizontal, magnitud en el vertical"></svg>
           </div>
         </div>
-        <div class="ayuda">👆 Cursor: detalle · Clic: escúchalo · <span id="ayudaSonido">🔊 más grave, más golpes y más largo = más fuerte</span></div>
+        <div class="ayuda">👆 Cursor: detalle · Clic: escúchalo · <span id="ayudaSonido">🔊 más agudo, más fuerte y más golpes = más intenso</span></div>
       </div>
       <div class="mapaWrap">
         <svg id="mapa" viewBox="0 0 300 620" role="img" aria-label="Mapa de Chile con los epicentros. Se puede acercar con la rueda del mouse y arrastrar."></svg>
@@ -183,7 +183,7 @@
 <script src="data.js?v=2"></script>
 <script src="chile.js?v=2"></script>
 <script>
-const VERSION_SONIDO = 'sonido-11 (tono + ritmo + duración; el tono se puede invertir) · color = magnitud';
+const VERSION_SONIDO = 'sonido-12 (agudo y fuerte = más intenso; tono + volumen + ritmo + duración) · color = magnitud';
 
 // ---------- Datos ----------
 const eventos = TERREMOTOS.map(e => {
@@ -593,7 +593,7 @@ function ocultarTip() { tip.hidden = true; }
 // ---------- Sonido ----------
 // Magnitud -> TONO (agudo a muy grave), RITMO (1 a 7 golpes encadenados) y DURACIÓN, más retumbo y temblor en los grandes.
 // Profundidad -> aspereza (más crujido en lo superficial) y ataque (más lento en lo profundo). Latitud -> estéreo (norte a la izquierda).
-let busTone = null, ajusteSync = 0, ultimoNodos = null, tonoInvertido = false;   // tonoInvertido: false = grave es más fuerte; true = agudo es más fuerte
+let busTone = null, ajusteSync = 0, ultimoNodos = null, tonoInvertido = true;   // true: lo agudo (y más fuerte) es más intenso, como una alarma; false: lo grave es más intenso
 function atenuar(nodos) {   // desvanece rápido el sonido anterior para que no se pisen las colas
   nodos.forEach(n => { try { if (n.volume) n.volume.rampTo(-80, 0.12); } catch (_) {} });
 }
@@ -641,7 +641,8 @@ function sonarTone(e, enCola) {
   const durGolpe = 0.3 + 1.3 * fuerza;                       // cada golpe dura más cuanto mayor es el terremoto
   const dur = (nGolpes - 1) * hueco + durGolpe + 0.3;
   const asp = clase === 'sup' ? 0 : clase === 'med' ? -4 : -8;   // dB de aspereza según la profundidad
-  const extra = 7 * fuerza + 4 * graveza;                    // el volumen sube con la magnitud; además se compensa que los graves se oyen menos
+  const nivel = -11 + 20 * fuerza;                           // VOLUMEN: de -11 dB (M7) a +9 dB (M9,5): un rango de 20 dB, unas 3 o 4 veces más fuerte
+  const comp = 5 * graveza;                                  // los graves se oyen menos: se compensan un poco
   const t = Tone.now();
   const nodos = [];
   const nodo = n => (nodos.push(n), n);
@@ -657,7 +658,7 @@ function sonarTone(e, enCola) {
   const voz = nodo(new Tone.PolySynth(Tone.Synth, {
     oscillator: { type: 'sawtooth' },
     envelope: { attack: clase === 'prof' ? 0.04 : 0.004, decay: durGolpe, sustain: 0, release: 0.1 },
-    volume: -13 + extra + asp * 0.5
+    volume: -15 + nivel + comp + asp * 0.5
   })).connect(filtroV);
   voz.maxPolyphony = 8;
   for (let k = 0; k < nGolpes; k++) {
@@ -670,7 +671,7 @@ function sonarTone(e, enCola) {
     const golpe = nodo(new Tone.MembraneSynth({
       pitchDecay: 0.05, octaves: 2.5,
       envelope: { attack: 0.003, decay: 0.35, sustain: 0, release: 0.1 },
-      volume: -12 + extra
+      volume: -14 + nivel + comp
     })).connect(salida);
     for (let k = 0; k < nGolpes; k++) golpe.triggerAttackRelease(tonoInvertido ? 70 : Math.max(F, 40), 0.1, t + k * hueco + 0.001 * k, Math.max(0.4, 1 - 0.1 * k));
   }
@@ -681,7 +682,7 @@ function sonarTone(e, enCola) {
   const retumbo = nodo(new Tone.NoiseSynth({
     noise: { type: 'brown' },
     envelope: { attack: clase === 'prof' ? 0.15 : 0.02, decay: dur, sustain: 0, release: 0.3 },
-    volume: -20 + 8 * fuerza + asp
+    volume: -22 + 0.7 * nivel + asp
   })).connect(filtroR);
   retumbo.triggerAttackRelease(dur, t);
 
@@ -689,7 +690,7 @@ function sonarTone(e, enCola) {
   const crujido = nodo(new Tone.NoiseSynth({
     noise: { type: 'pink' },
     envelope: { attack: 0.001, decay: 0.05 + 0.08 * (1 - fuerza), sustain: 0, release: 0.02 },
-    volume: -13 - 6 * fuerza + (clase === 'sup' ? 3 : clase === 'med' ? -1 : -6)
+    volume: -12 + 0.5 * nivel + (clase === 'sup' ? 3 : clase === 'med' ? -1 : -6)
   })).connect(nodo(new Tone.Filter(1800, 'highpass')).connect(pan));
   crujido.triggerAttackRelease(0.05, t);
 
@@ -823,7 +824,7 @@ document.getElementById('ritmo').addEventListener('input', ev => {
 });
 document.getElementById('polaridad').addEventListener('change', ev => {
   tonoInvertido = ev.target.value === 'agudo';
-  document.getElementById('ayudaSonido').textContent = tonoInvertido ? '🔊 más agudo, más golpes y más largo = más fuerte' : '🔊 más grave, más golpes y más largo = más fuerte';
+  document.getElementById('ayudaSonido').textContent = tonoInvertido ? '🔊 más agudo, más fuerte y más golpes = más intenso' : '🔊 más grave, más fuerte y más golpes = más intenso';
 });
 document.getElementById('sync').addEventListener('input', ev => {
   ajusteSync = Number(ev.target.value);

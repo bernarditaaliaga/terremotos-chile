@@ -157,3 +157,10 @@ git push -u origin main --tags
 - **Motivo:** al escuchar, no se distinguía el sonido de un terremoto de baja magnitud del de uno de alta; el diseño anterior dependía sobre todo del timbre del ruido.
 - **Medición (señal analizada en el navegador):** tono dominante 879 / 504 / 287 / 170 / 94 / 53 Hz para M7 / 7,5 / 8 / 8,5 / 9 / 9,5; golpes detectados 1, 2, 3, 5, 7, 7; duración audible de 0,3 s a 1,8 s.
 - **Limitación:** el volumen sube con la magnitud (de 0,03 a 0,10 de nivel eficaz) para compensar que los graves se oyen menos; el mapeo no está validado con usuarios (¿se interpreta "más grave y con más golpes = más fuerte"?).
+
+### V3: tono invertible para comparar qué se entiende mejor
+
+- **Qué cambió:** en "⚙ Ajustes" hay un selector "Tono del sonido": *grave = más fuerte* (por defecto) o *agudo = más fuerte*. En ambos casos el ritmo (más golpes) y la duración crecen con la magnitud, y el volumen siempre sube con ella. El texto de ayuda cambia según el modo elegido.
+- **Motivo:** no hay una respuesta teórica segura sobre qué polaridad se entiende mejor (para "tamaño" muchas personas asocian lo grande con lo grave; para "intensidad" muchas asocian "más" con "más agudo"), así que se deja elegir para probarlo con personas.
+- **Medición:** tono dominante 879 → 287 → 53 Hz (modo grave) y 53 → 164 → 855 Hz (modo agudo) para M7 → M8 → M9,5; el volumen eficaz sube con la magnitud en ambos modos (0,031 → 0,133 y 0,046 → 0,084).
+- **Pendiente:** definir la polaridad final según una prueba con usuarios (porcentaje de aciertos al decidir cuál de dos terremotos es el más fuerte, sin explicación previa).

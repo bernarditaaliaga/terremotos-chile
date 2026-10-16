@@ -6,41 +6,59 @@
 <title>Terremotos de Chile desde 1900</title>
 <style>
   :root {
-    --bg: #faf8f5;
+    --bg: #f7f3ec;
     --ink: #1f2430;
     --muted: #6b7280;
     --grid: #e4e0d8;
-    --sup: #e8590c;   /* superficial */
-    --med: #9c36b5;   /* intermedio */
-    --prof: #1c3d8f;  /* profundo */
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; background: var(--bg); color: var(--ink);
+    margin: 0; color: var(--ink);
+    background: radial-gradient(1100px 380px at 50% -120px, #f1dfcb 0%, var(--bg) 62%) fixed;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     line-height: 1.4;
   }
-  main { max-width: 1500px; margin: 0 auto; padding: 24px 24px 40px; }
-  h1 { font-size: clamp(1.4rem, 3.2vw, 2rem); line-height: 1.15; margin: 0 0 4px; }
-  .sub { color: var(--muted); margin: 0 0 16px; }
-  .card { position: relative; background: #fff; border: 1px solid var(--grid); border-radius: 10px; padding: 12px; }
+  main { max-width: 1500px; margin: 0 auto; padding: 22px 24px 40px; }
+
+  /* Portada con un sismograma dibujado con los datos reales */
+  .hero {
+    position: relative; overflow: hidden; border-radius: 14px; padding: 22px 26px 0; color: #fff; margin-bottom: 14px;
+    background: linear-gradient(120deg, #1b1f2a 0%, #2a2230 48%, #8f3513 100%);
+    box-shadow: 0 10px 30px rgba(31, 36, 48, 0.18);
+  }
+  .hero h1 { font-size: clamp(1.5rem, 3.4vw, 2.3rem); line-height: 1.15; margin: 0 0 4px; }
+  .hero .sub { color: rgba(255, 255, 255, 0.78); margin: 0 0 4px; }
+  #heroSismo { display: block; width: 100%; height: 64px; margin-top: 6px; }
+  #heroSismo path { fill: none; stroke: rgba(255, 255, 255, 0.78); stroke-width: 1.3; vector-effect: non-scaling-stroke; stroke-linejoin: round;
+    stroke-dasharray: 1; stroke-dashoffset: 1; animation: trazo 3s ease-out 0.2s forwards; }
+  @keyframes trazo { to { stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) { #heroSismo path { animation: none; stroke-dashoffset: 0; } }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .stat { background: #fff; border: 1px solid var(--grid); border-top: 4px solid var(--c, var(--ink)); border-radius: 12px; padding: 10px 14px; box-shadow: 0 3px 10px rgba(31, 36, 48, 0.05); }
+  .stat b { display: block; font-size: 1.55rem; line-height: 1.1; }
+  .stat span { font-size: 0.82rem; color: var(--muted); }
+
+  .card { position: relative; background: #fff; border: 1px solid var(--grid); border-radius: 14px; padding: 14px; box-shadow: 0 6px 24px rgba(31, 36, 48, 0.07); }
   button {
     font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--ink);
-    background: var(--ink); color: #fff; cursor: pointer;
+    background: linear-gradient(135deg, #1f2430, #4a2a22); color: #fff; cursor: pointer;
   }
   button.sec { background: #fff; color: var(--ink); }
   button:focus-visible, .sismo:focus-visible { outline: 3px solid #2f6fed; outline-offset: 2px; }
   .barra { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 8px; font-size: 0.9rem; }
   .chip { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
   .chip input { accent-color: var(--ink); }
-  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .forma { font-size: 13px; line-height: 1; }
+  .escala { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+  .escala i { width: 110px; height: 10px; border-radius: 5px; display: inline-block; }
   .barra label.mag { display: flex; align-items: center; gap: 8px; }
   .barra input[type=range] { width: 120px; }
   details.ajustes { font-size: 0.85rem; color: var(--muted); }
   details.ajustes summary { cursor: pointer; list-style: none; }
   details.ajustes .cont { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; padding: 8px 0 2px; }
   #status { font-size: 0.85rem; color: var(--muted); min-height: 1.2em; margin-bottom: 4px; }
-  .cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 8px; align-items: start; }
+  .cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) clamp(180px, 21vw, 230px); gap: 8px; align-items: start; }
   @media (max-width: 760px) { .cuerpo { grid-template-columns: 1fr; } }
   .lienzoWrap { position: relative; }
   #ejeY { position: absolute; left: 0; top: 0; width: 40px; height: 100%; pointer-events: none; }
@@ -48,46 +66,65 @@
   #lienzo { overflow-x: auto; margin-left: 40px; padding-bottom: 14px; }
   svg { display: block; }
   .tick text { font-size: 14px; font-weight: 600; fill: var(--ink); }
-  .lbl { font-size: 12px; font-weight: 700; fill: var(--ink); }
+  .lbl { font-size: 12px; font-weight: 700; fill: var(--ink); paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
+  .banda { font-size: 11px; font-weight: 700; fill: #b45309; letter-spacing: 0.04em; }
   .sismo { cursor: pointer; }
-  .sismo .tallo { stroke-width: 2; stroke-opacity: 0.55; }
-  .sismo .q { stroke: #fff; stroke-width: 1.5; }
+  .sismo .tallo { stroke-width: 2; stroke-opacity: 0.6; }
+  .sismo .q { stroke: rgba(31, 36, 48, 0.45); stroke-width: 1; }
   .sismo:hover .q, .sismo.sel .q { stroke: var(--ink); stroke-width: 2.5; }
   .sismo.sonando .q { stroke: var(--ink); stroke-width: 3.5; }
+  .sismo.fantasma { opacity: 0.14; pointer-events: none; }
+  .sismo.fantasma .q { stroke: none; }
   .guia { visibility: hidden; pointer-events: none; }
   .guia.on { visibility: visible; }
   #playhead { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 4 3; }
   .ayuda { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
-  #mapa .costa { fill: #f1ede4; stroke: #b8b2a4; stroke-width: 0.8; }
-  #mapa .ciudad { font-size: 11px; fill: var(--muted); }
-  #mapa .ep { stroke: #fff; stroke-width: 0.6; opacity: 0.75; }
+
+  /* Mapa */
+  #mapa { border-radius: 10px; }
+  #mapa .oceano-fondo { fill: #dbe9f1; }
+  #mapa .vecino { fill: #ebe6da; stroke: #cfc8b8; stroke-width: 0.6; }
+  #mapa .costa { fill: #fbf6ea; stroke: #8d8576; stroke-width: 1; }
+  #mapa .ciudad { font-size: 11px; fill: #4b5563; paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
+  #mapa .oceano { font-size: 9px; font-style: italic; fill: #4b6a82; }
+  #mapa .flecha { stroke: #4b6a82; stroke-width: 1.6; }
+  #mapa .flechaPunta { fill: #4b6a82; }
+  #mapa .ep { stroke: rgba(31, 36, 48, 0.4); stroke-width: 0.5; opacity: 0.9; }
+  #mapa .ep.fantasma { opacity: 0.18; stroke: none; }
   #mapa .ep.sel { stroke: var(--ink); stroke-width: 1.6; opacity: 1; }
   #mapa .pulso { fill: none; stroke: var(--ink); stroke-width: 1.8; transform-box: fill-box; transform-origin: center; animation: onda 1.3s ease-out forwards; }
   @keyframes onda { from { transform: scale(1); opacity: 0.95; } to { transform: scale(9); opacity: 0; } }
+
   #tip {
     position: absolute; z-index: 5; pointer-events: none; background: var(--ink); color: #fff;
     padding: 8px 10px; border-radius: 8px; font-size: 0.85rem; line-height: 1.35; white-space: nowrap;
-    transform: translate(-50%, -100%);
+    transform: translate(-50%, -100%); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
   }
   #tip b { font-size: 0.95rem; }
+  #tip .en { color: #fcd34d; }
   .fuente { margin-top: 14px; font-size: 0.8rem; color: var(--muted); }
 </style>
 </head>
 <body>
 <main>
-  <h1 id="titular"></h1>
-  <p class="sub" id="bajada"></p>
+  <header class="hero">
+    <h1 id="titular"></h1>
+    <p class="sub" id="bajada"></p>
+    <svg id="heroSismo" viewBox="0 0 1000 64" preserveAspectRatio="none" aria-hidden="true"></svg>
+  </header>
+  <div class="stats" id="stats"></div>
 
   <section class="card" id="tarjeta" aria-label="Terremotos de Chile">
     <div class="barra">
       <button id="btnPlay">▶ Escuchar la historia</button>
       <button id="btnStop" class="sec" hidden>■ Detener</button>
-      <label class="chip"><input type="checkbox" id="cSup" checked><i class="dot" style="background:var(--sup)"></i>Superficial</label>
-      <label class="chip"><input type="checkbox" id="cMed" checked><i class="dot" style="background:var(--med)"></i>Intermedio</label>
-      <label class="chip"><input type="checkbox" id="cProf" checked><i class="dot" style="background:var(--prof)"></i>Profundo</label>
+      <label class="chip"><input type="checkbox" id="cSup" checked><span class="forma">●</span>Superficial</label>
+      <label class="chip"><input type="checkbox" id="cMed" checked><span class="forma">◆</span>Intermedio</label>
+      <label class="chip"><input type="checkbox" id="cProf" checked><span class="forma">▲</span>Profundo</label>
       <label class="mag">Magnitud mínima <b id="vMag">7.0</b>
         <input id="minMag" type="range" min="7" max="9" step="0.1" value="7">
       </label>
+      <span class="escala" title="Color = magnitud (el mismo dato que la altura)"><b>7</b><i id="gradiente"></i><b>9,5</b></span>
       <details class="ajustes">
         <summary title="Ajustes de sonido">⚙ Ajustes</summary>
         <div class="cont">
@@ -113,9 +150,9 @@
                  aria-label="Terremotos de magnitud 7 o más en Chile: año en el eje horizontal, magnitud en el vertical"></svg>
           </div>
         </div>
-        <div class="ayuda">👆 Pasa el cursor para ver el detalle · 🔊 Haz clic para escucharlo</div>
+        <div class="ayuda">👆 Cursor: detalle · Clic: escúchalo · 🔊 más grave y largo = más fuerte</div>
       </div>
-      <svg id="mapa" viewBox="0 0 190 470" role="img" aria-label="Mapa de Chile con los epicentros"></svg>
+      <svg id="mapa" viewBox="0 0 230 470" role="img" aria-label="Mapa de Chile con los epicentros"></svg>
     </div>
     <div id="tip" hidden></div>
   </section>
@@ -125,9 +162,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 <script src="data.js?v=2"></script>
-<script src="chile.js?v=1"></script>
+<script src="chile.js?v=2"></script>
 <script>
-const VERSION_SONIDO = 'sonido-9 (retumbo de terremoto: grave = grande)';
+const VERSION_SONIDO = 'sonido-9 (retumbo de terremoto: grave = grande) · color = magnitud';
 
 // ---------- Datos ----------
 const eventos = TERREMOTOS.map(e => {
@@ -139,19 +176,64 @@ const eventos = TERREMOTOS.map(e => {
 
 const claseProf = p => p < 50 ? 'sup' : (p <= 100 ? 'med' : 'prof');
 const nombreClase = { sup: 'Superficial', med: 'Intermedio', prof: 'Profundo' };
-const colorClase = { sup: 'var(--sup)', med: 'var(--med)', prof: 'var(--prof)' };
 const fmtMag = m => m.toFixed(1).replace('.', ',');
 
-// ---------- Titular ----------
-(function titular() {
+// Color = magnitud (el mismo dato que la altura de la barra, así que no se pierde información si no se distinguen los colores):
+// verde (M7) -> amarillo -> naranjo -> rojo oscuro (M9,5). Profundidad = forma del marcador: círculo, rombo, triángulo.
+const PARADAS = [[7.0, [143, 209, 79]], [7.5, [233, 226, 61]], [8.0, [247, 168, 35]], [8.6, [232, 67, 30]], [9.5, [139, 10, 10]]];
+function colorMag(m) {
+  const mm = Math.min(Math.max(m, 7), 9.5);
+  for (let i = 1; i < PARADAS.length; i++) {
+    if (mm <= PARADAS[i][0]) {
+      const [m0, c0] = PARADAS[i - 1], [m1, c1] = PARADAS[i], f = (mm - m0) / (m1 - m0);
+      return 'rgb(' + c0.map((v, k) => Math.round(v + (c1[k] - v) * f)).join(',') + ')';
+    }
+  }
+}
+document.getElementById('gradiente').style.background =
+  'linear-gradient(to right, ' + PARADAS.map(([m, c]) => `rgb(${c.join(',')}) ${((m - 7) / 2.5 * 100).toFixed(0)}%`).join(', ') + ')';
+function marcador(clase, x, y, r, color) {
+  if (clase === 'sup') return el('circle', { cx: x, cy: y, r, fill: color });
+  if (clase === 'med') { const d = r * 1.35; return el('polygon', { points: `${x},${y - d} ${x + d},${y} ${x},${y + d} ${x - d},${y}`, fill: color }); }
+  const d = r * 1.3; return el('polygon', { points: `${x},${y - d} ${x + d * 1.1},${y + d * 0.8} ${x - d * 1.1},${y + d * 0.8}`, fill: color });
+}
+
+// ---------- Portada: titular, tarjetas de contexto y un sismograma con los datos reales ----------
+(function portada() {
   const mayor = eventos.reduce((a, b) => (b.mag > a.mag ? b : a));
-  document.getElementById('titular').textContent = `${eventos.length} terremotos de magnitud 7+ en Chile desde 1900`;
-  document.getElementById('bajada').textContent = `El mayor: ${mayor.lugar} ${mayor.anio}, M${fmtMag(mayor.mag)}, el más fuerte registrado en el mundo`;
+  const n = eventos.length, g8 = eventos.filter(e => e.mag >= 8).length;
+  document.getElementById('titular').textContent = `${n} terremotos de magnitud 7+ en Chile desde 1900`;
+  document.getElementById('bajada').textContent = 'Cada barra es un terremoto: la altura y el color indican su magnitud';
+
+  const cada = ((2026 - 1900) / n).toFixed(1).replace('.', ',');
+  const tarjetas = [
+    [n, 'terremotos de M7 o más', colorMag(7)],
+    [g8, 'de M8 o más (grandes terremotos)', colorMag(8.3)],
+    ['1 cada ' + cada + ' años', 'en promedio desde 1900', '#6b7280'],
+    ['M' + fmtMag(mayor.mag), `${mayor.lugar} ${mayor.anio}: el mayor registrado en el mundo`, colorMag(9.5)]
+  ];
+  document.getElementById('stats').innerHTML = tarjetas.map(([g, t, c]) =>
+    `<div class="stat" style="--c:${c}"><b>${g}</b><span>${t}</span></div>`).join('');
+
+  // sismograma decorativo: cada pico es un terremoto real (su posición es el año y su altura, la magnitud)
+  let semilla = 7;
+  const azar = () => { semilla = (semilla * 16807) % 2147483647; return semilla / 2147483647; };
+  const ev = eventos.map(e => ({ x: (e.t - 1900) / 127 * 1000, a: (e.mag - 6.6) / 3 * 27 }));
+  const pts = [];
+  for (let x = 0; x <= 1000; x += 1.5) {
+    let y = (azar() - 0.5) * 3;
+    for (const k of ev) { const dx = x - k.x; if (dx >= 0 && dx < 40) y += k.a * Math.exp(-dx / 9) * Math.sin(dx * 1.1) * (dx < 2 ? dx / 2 : 1); }
+    pts.push([x, Math.min(61, Math.max(3, 32 - y))]);
+  }
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p.setAttribute('d', 'M' + pts.map(([x, y]) => x.toFixed(1) + ',' + y.toFixed(1)).join('L'));
+  p.setAttribute('pathLength', '1');
+  document.getElementById('heroSismo').appendChild(p);
 })();
 
 // ---------- Sismograma ----------
 // Horizontal: tiempo. Vertical: magnitud (la altura de cada barra es la magnitud: posición y longitud son lo que mejor lee el ojo).
-// Color: profundidad. La geografía va en el mapa de la derecha.
+// Forma: profundidad. La geografía va en el mapa de la derecha.
 const svg = document.getElementById('chart');
 const NS = 'http://www.w3.org/2000/svg';
 let W = 800;
@@ -174,10 +256,9 @@ const xDe = t => M.l + ((t - estado.desde) / (estado.hasta + 1 - estado.desde)) 
 const yMag = m => M.t + (1 - (m - M_MIN) / (M_MAX - M_MIN)) * ih;
 const BASE = M.t + ih;
 
-function visibles() {
-  return eventos.filter(e =>
-    e.mag >= estado.minMag && e.anio >= estado.desde && e.anio <= estado.hasta && estado[claseProf(e.prof)]
-  );
+const enRango = () => eventos.filter(e => e.anio >= estado.desde && e.anio <= estado.hasta);
+function visibles() {   // los que cumplen los filtros (los demás quedan como "fantasmas": se ven tenues, pero no se pierde información)
+  return enRango().filter(e => e.mag >= estado.minMag && estado[claseProf(e.prof)]);
 }
 
 // Regresión isotónica (PAV): la secuencia no decreciente más cercana a la dada.
@@ -196,6 +277,7 @@ function noDecreciente(v) {
 
 // Orden estricto: cada terremoto queda siempre a la derecha del anterior, con un paso mínimo (así las barras no se tapan
 // y la línea de reproducción avanza sin devolverse). Cuando hay varios seguidos se desplazan lo mínimo posible.
+// Las posiciones se calculan con TODOS los terremotos, así no se mueve nada al filtrar.
 let PASO = 14;
 function posiciones(lista) {
   const orden = [...lista].sort((a, b) => a.t - b.t);
@@ -235,9 +317,10 @@ new ResizeObserver(() => {
 function dibujar() {
   const ancho = document.getElementById('lienzo').clientWidth || 800;
   anchoUsado = ancho;
-  const vis = visibles();
-  W = Math.max(ancho, vis.length * 10 + M.l + M.r + 20);   // crece (con scroll) solo si no caben todos
-  PASO = Math.max(10, Math.min(12, (W - M.l - M.r - 20) / Math.max(vis.length, 1)));
+  const todos = enRango();
+  const vis = visibles(), visSet = new Set(vis);
+  W = Math.max(ancho, todos.length * 9.2 + M.l + M.r + 20);   // crece (con scroll) solo si no caben todos
+  PASO = Math.max(9.2, Math.min(12, (W - M.l - M.r - 20) / Math.max(todos.length, 1)));
   iw = W - M.l - M.r;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   svg.style.width = W + 'px';
@@ -245,6 +328,10 @@ function dibujar() {
   svg.innerHTML = '';
   const g = el('g');
   svg.appendChild(g);
+
+  // franja de los grandes terremotos (M8+), con su etiqueta
+  g.appendChild(el('rect', { x: M.l, y: M.t, width: W - M.l - M.r, height: yMag(8) - M.t, fill: '#fff1e3' }));
+  g.appendChild(el('text', { class: 'banda', x: W - M.r - 6, y: M.t + 14, 'text-anchor': 'end' }, 'GRAN TERREMOTO · M8+'));
 
   // marcas de magnitud
   [7, 7.5, 8, 8.5, 9, 9.5].forEach(m => {
@@ -265,7 +352,7 @@ function dibujar() {
     g.appendChild(t);
   }
 
-  const pos = posiciones(vis);
+  const pos = posiciones(todos);
   ultimaPos = pos; guias = new Map();
 
   // marcas de fecha exacta en el eje (se ven al pasar el cursor, solo para las barras desplazadas)
@@ -279,38 +366,43 @@ function dibujar() {
     }
   });
 
-  // barras (tallo + punto): la altura es la magnitud
-  vis.forEach(e => {
+  // barras (tallo + marcador): la altura es la magnitud; los que no cumplen los filtros quedan tenues
+  [...todos.filter(e => !visSet.has(e)), ...vis].forEach(e => {
     const o = pos.get(e);
-    const color = colorClase[claseProf(e.prof)];
+    const fantasma = !visSet.has(e);
+    const color = colorMag(e.mag);
     const s = el('g', {
-      class: 'sismo' + (estado.sel === e ? ' sel' : ''), tabindex: 0, role: 'button',
+      class: 'sismo' + (fantasma ? ' fantasma' : '') + (estado.sel === e ? ' sel' : ''),
       'aria-label': `${e.lugar}, ${e.fecha}, magnitud ${e.mag}, profundidad ${Math.round(e.prof)} kilómetros`
     });
+    if (!fantasma) { s.setAttribute('tabindex', 0); s.setAttribute('role', 'button'); }
     s.appendChild(el('line', { class: 'tallo', x1: o.x, x2: o.x, y1: BASE, y2: o.y, stroke: color }));
-    const c = el('circle', { class: 'q', cx: o.x, cy: o.y, r: RADIO, fill: color });
+    const c = marcador(claseProf(e.prof), o.x, o.y, RADIO, color);
+    c.setAttribute('class', 'q');
     s.appendChild(c);
-    s.appendChild(el('rect', { x: o.x - PASO / 2, y: o.y - RADIO - 2, width: PASO, height: BASE - o.y + RADIO + 2, fill: 'transparent' }));   // zona sensible
-    s.addEventListener('mouseenter', () => { mostrarTip(e); mostrarGuia(e, true); marcarMapa(e, true); });
-    s.addEventListener('mouseleave', () => { if (!animando) ocultarTip(); mostrarGuia(e, false); marcarMapa(e, estado.sel === e); });
-    s.addEventListener('focus', () => { mostrarTip(e); marcarMapa(e, true); });
-    s.addEventListener('blur', () => { if (!animando) ocultarTip(); marcarMapa(e, estado.sel === e); });
-    s.addEventListener('click', () => { estado.sel = e; marcar(); sonar(e); ondaMapa(e); mostrarTip(e); });
-    s.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); s.dispatchEvent(new Event('click')); } });
+    if (!fantasma) {
+      s.appendChild(el('rect', { x: o.x - PASO / 2, y: o.y - RADIO - 2, width: PASO, height: BASE - o.y + RADIO + 2, fill: 'transparent' }));   // zona sensible
+      s.addEventListener('mouseenter', () => { mostrarTip(e); mostrarGuia(e, true); marcarMapa(e, true); });
+      s.addEventListener('mouseleave', () => { if (!animando) ocultarTip(); mostrarGuia(e, false); marcarMapa(e, estado.sel === e); });
+      s.addEventListener('focus', () => { mostrarTip(e); marcarMapa(e, true); });
+      s.addEventListener('blur', () => { if (!animando) ocultarTip(); marcarMapa(e, estado.sel === e); });
+      s.addEventListener('click', () => { estado.sel = e; marcar(); sonar(e); ondaMapa(e); mostrarTip(e); });
+      s.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); s.dispatchEvent(new Event('click')); } });
+    }
     s._e = e; c._e = e; c._g = s;
     g.appendChild(s);
   });
 
-  // etiquetas de los mayores, encima del punto
+  // etiquetas de los mayores, encima del marcador
   vis.filter(e => e.mag >= 8.5).forEach(e => {
     const o = pos.get(e);
     g.appendChild(el('text', { class: 'lbl', x: o.x, y: o.y - RADIO - 8, 'text-anchor': 'middle' }, `${e.anio} · M${fmtMag(e.mag)}`));
   });
 
   g.appendChild(el('line', { id: 'playhead', y1: M.t, y2: BASE, x1: -10, x2: -10 }));
-  document.getElementById('status').textContent = `${vis.length} terremotos`;
+  document.getElementById('status').textContent = vis.length === todos.length ? `${vis.length} terremotos` : `${vis.length} de ${todos.length} terremotos`;
   colocarEjeY();
-  dibujarMapa(vis);
+  dibujarMapa(todos, visSet);
 }
 
 function marcar() {
@@ -318,40 +410,53 @@ function marcar() {
   document.querySelectorAll('#mapa .ep').forEach(c => c.classList.toggle('sel', c._e === estado.sel));
 }
 
-// ---------- Mapa de Chile ----------
+// ---------- Mapa de Chile (con océano, países vecinos y la placa de Nazca) ----------
 const mapa = document.getElementById('mapa');
-const MH = 470, MW = 190, MPAD = 12;
+const MH = 470, MW = 230, MPAD = 12;
 const LAT_N = -17, LAT_S = -56;
 const KM = (MH - 2 * MPAD) / (LAT_N - LAT_S);          // píxeles por grado de latitud
 const COSF = Math.cos(36.5 * Math.PI / 180);            // la longitud se acorta con la latitud
 const lonMin = Math.min(...CHILE_MAPA.flat().map(p => p[0]));
-const proyMapa = (lon, lat) => [10 + (lon - lonMin) * COSF * KM, MPAD + (LAT_N - lat) * KM];
+const proyMapa = (lon, lat) => [62 + (lon - lonMin) * COSF * KM, MPAD + (LAT_N - lat) * KM];
 const ciudades = [
   ['Arica', -70.31, -18.48], ['Antofagasta', -70.4, -23.65], ['Valparaíso', -71.62, -33.05],
   ['Concepción', -73.05, -36.83], ['Valdivia', -73.25, -39.81], ['Punta Arenas', -70.91, -53.16]
 ];
 let puntosMapa = new Map();
+const trazo = poli => 'M' + poli.map(([lo, la]) => proyMapa(lo, la).map(v => v.toFixed(1)).join(',')).join('L') + 'Z';
 
-function dibujarMapa(vis) {
+function dibujarMapa(todos, visSet) {
   mapa.innerHTML = '';
   const g = el('g');
   mapa.appendChild(g);
-  CHILE_MAPA.forEach(poli => {
-    g.appendChild(el('path', { class: 'costa', d: 'M' + poli.map(([lo, la]) => proyMapa(lo, la).map(v => v.toFixed(1)).join(',')).join('L') + 'Z' }));
-  });
+  g.appendChild(el('rect', { class: 'oceano-fondo', x: 0, y: 0, width: MW, height: MH }));
+  VECINOS_MAPA.forEach(poli => g.appendChild(el('path', { class: 'vecino', d: trazo(poli) })));
+  CHILE_MAPA.forEach(poli => g.appendChild(el('path', { class: 'costa', d: trazo(poli) })));
+
+  // la placa de Nazca se hunde bajo Sudamérica: por eso hay terremotos (esquema)
+  const yN = proyMapa(-75, -27)[1];
+  g.appendChild(el('line', { class: 'flecha', x1: 6, x2: 44, y1: yN, y2: yN }));
+  g.appendChild(el('polygon', { class: 'flechaPunta', points: `44,${yN - 4} 53,${yN} 44,${yN + 4}` }));
+  g.appendChild(el('text', { class: 'oceano', x: 6, y: yN - 8 }, 'Placa de Nazca'));
+  g.appendChild(el('text', { class: 'oceano', x: 6, y: yN + 18 }, 'se hunde bajo'));
+  g.appendChild(el('text', { class: 'oceano', x: 6, y: yN + 29 }, 'Sudamérica'));
+  g.appendChild(el('text', { class: 'oceano', transform: 'translate(20,410) rotate(-90)' }, 'Océano Pacífico'));
+
   ciudades.forEach(([nombre, lon, lat]) => {
     const [x, y] = proyMapa(lon, lat);
-    g.appendChild(el('line', { x1: x, x2: 104, y1: y, y2: y, stroke: '#d6d1c4', 'stroke-width': 0.8 }));
-    g.appendChild(el('circle', { cx: x, cy: y, r: 2, fill: '#6b7280' }));
-    g.appendChild(el('text', { class: 'ciudad', x: 108, y: y + 4 }, nombre));
+    g.appendChild(el('line', { x1: x, x2: 150, y1: y, y2: y, stroke: '#b9b2a2', 'stroke-width': 0.8 }));
+    g.appendChild(el('circle', { cx: x, cy: y, r: 2, fill: '#4b5563' }));
+    g.appendChild(el('text', { class: 'ciudad', x: 154, y: y + 4 }, nombre));
   });
   puntosMapa = new Map();
-  vis.forEach(e => {
+  [...todos.filter(e => !visSet.has(e)), ...todos.filter(e => visSet.has(e))].forEach(e => {
     const [x, y] = proyMapa(e.lon, e.lat);
-    const c = el('circle', { class: 'ep' + (estado.sel === e ? ' sel' : ''), cx: x, cy: y, r: 2.8, fill: colorClase[claseProf(e.prof)] });
+    const fantasma = !visSet.has(e);
+    const c = marcador(claseProf(e.prof), x, y, 2.9, colorMag(e.mag));
+    c.setAttribute('class', 'ep' + (fantasma ? ' fantasma' : '') + (estado.sel === e ? ' sel' : ''));
     c._e = e;
     g.appendChild(c);
-    puntosMapa.set(e, c);
+    if (!fantasma) puntosMapa.set(e, c);
   });
 }
 
@@ -369,11 +474,23 @@ function ondaMapa(e) {   // anillo que se expande desde el epicentro, como una o
   }, latenciaMs());
 }
 
+// El gráfico y el mapa se sacuden, más fuerte y más tiempo mientras mayor es el terremoto
+function sacudir(e) {
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const f = (e.mag - 7) / 2.5, amp = 0.6 + 6 * f, dur = 350 + 1500 * f, n = Math.round(dur / 45);
+  const kf = [];
+  for (let i = 0; i <= n; i++) { const d = Math.pow(1 - i / n, 1.5) * amp; kf.push({ transform: `translate(${(Math.random() * 2 - 1) * d}px, ${(Math.random() * 2 - 1) * d * 0.6}px)` }); }
+  kf.push({ transform: 'none' });
+  document.querySelector('.cuerpo').animate(kf, { duration: dur, easing: 'linear' });
+}
+
 // ---------- Detalle al pasar el cursor ----------
 const tip = document.getElementById('tip');
 function mostrarTip(e) {
   const fecha = new Date(e.fecha + 'T12:00:00Z').toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-  tip.innerHTML = `<b>${e.lugar}</b><br>${fecha}${e.hora ? ', ' + e.hora.slice(0, 5) + ' UTC' : ''}<br>Magnitud ${fmtMag(e.mag)} · ${Math.round(e.prof)} km (${nombreClase[claseProf(e.prof)].toLowerCase()})`;
+  const ratio = Math.pow(10, 1.5 * (e.mag - 7));   // cada punto de magnitud = ~32 veces más energía
+  const energia = ratio < 1.5 ? 'la energía de un M7' : '≈ ' + (ratio >= 100 ? Math.round(ratio / 100) * 100 : Math.round(ratio)).toLocaleString('es-CL') + '× la energía de un M7';
+  tip.innerHTML = `<b>${e.lugar}</b><br>${fecha}${e.hora ? ', ' + e.hora.slice(0, 5) + ' UTC' : ''}<br>Magnitud ${fmtMag(e.mag)} · ${Math.round(e.prof)} km (${nombreClase[claseProf(e.prof)].toLowerCase()})<br><span class="en">⚡ ${energia}</span>`;
   tip.hidden = false;
   const dot = ultimaPos.get(e);
   if (!dot) return;
@@ -411,12 +528,17 @@ function iniciarAudio() {
 }
 document.addEventListener('pointerdown', () => iniciarAudio(), { once: true });
 
+let resalte = null;   // solo un terremoto resaltado a la vez, igual que solo suena uno
 function resaltarPunto(e, dur) {
   const c = [...svg.querySelectorAll('.sismo')].find(x => x._e === e);
-  if (!c) return;
   const lat = latenciaMs();
-  setTimeout(() => c.classList.add('sonando'), lat);
-  setTimeout(() => c.classList.remove('sonando'), lat + dur * 1000);
+  setTimeout(() => sacudir(e), lat);
+  if (!c) return;
+  if (resalte) { clearTimeout(resalte.t1); clearTimeout(resalte.t2); resalte.c.classList.remove('sonando'); }
+  const r = { c };
+  r.t1 = setTimeout(() => c.classList.add('sonando'), lat);
+  r.t2 = setTimeout(() => { c.classList.remove('sonando'); if (resalte === r) resalte = null; }, lat + dur * 1000);
+  resalte = r;
 }
 
 function sonarTone(e, enCola) {
@@ -515,6 +637,10 @@ const btnPlay = document.getElementById('btnPlay');
 const btnStop = document.getElementById('btnStop');
 let RITMO = 1500;   // ms entre un terremoto y el siguiente (ajustable en vivo): uno por vez, sin que se pisen
 
+function textoEstado() {
+  const n = visibles().length, t = enRango().length;
+  return n === t ? `${n} terremotos` : `${n} de ${t} terremotos`;
+}
 function detener() {
   if (animando) { cancelAnimationFrame(animando.raf); clearTimeout(animando.timer); }
   animando = null;
@@ -523,7 +649,7 @@ function detener() {
   const ph = document.getElementById('playhead');
   if (ph) { ph.setAttribute('x1', -10); ph.setAttribute('x2', -10); }
   ocultarTip();
-  document.getElementById('status').textContent = `${visibles().length} terremotos`;
+  document.getElementById('status').textContent = textoEstado();
 }
 
 const ESPERA_AUDIO = 1000;

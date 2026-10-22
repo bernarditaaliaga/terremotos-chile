@@ -50,6 +50,7 @@
   .chip { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
   .chip input { accent-color: var(--ink); }
   .forma { font-size: 13px; line-height: 1; }
+  .chip small { color: var(--muted); font-size: 0.78rem; }
   .escala { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }
   .escala i { width: 110px; height: 10px; border-radius: 5px; display: inline-block; cursor: pointer; box-shadow: 0 0 0 1px rgba(31,36,48,.2); }
   .escala .ojo { font-size: 0.75rem; color: var(--muted); }
@@ -125,9 +126,9 @@
     <div class="barra">
       <button id="btnPlay">▶ Escuchar la historia</button>
       <button id="btnStop" class="sec" hidden>■ Detener</button>
-      <label class="chip"><input type="checkbox" id="cSup" checked><span class="forma">●</span>Superficial</label>
-      <label class="chip"><input type="checkbox" id="cMed" checked><span class="forma">◆</span>Intermedio</label>
-      <label class="chip"><input type="checkbox" id="cProf" checked><span class="forma">▲</span>Profundo</label>
+      <label class="chip"><input type="checkbox" id="cSup" checked><span class="forma">●</span>Superficial <small>&lt; 50 km</small></label>
+      <label class="chip"><input type="checkbox" id="cMed" checked><span class="forma">◆</span>Intermedio <small>50–100 km</small></label>
+      <label class="chip"><input type="checkbox" id="cProf" checked><span class="forma">▲</span>Profundo <small>&gt; 100 km</small></label>
       <label class="mag">Magnitud mínima <b id="vMag">7.0</b>
         <input id="minMag" type="range" min="7" max="9" step="0.1" value="7">
       </label>

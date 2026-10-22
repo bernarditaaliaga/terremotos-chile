@@ -188,3 +188,5 @@ git push -u origin main --tags
   - No se encontró una convención establecida para sonificar la magnitud sísmica: es una decisión de diseño que hay que validar con usuarios.
 - **Decisión:** por defecto, **más agudo = mayor magnitud** (urgencia de alarma), con un selector en "⚙ Ajustes" para invertirlo y comparar con usuarios. La elección final depende de la prueba con personas.
 - **Limitaciones:** la dirección del tono no está validada con usuarios; el nivel de volumen depende del dispositivo; con 66 terremotos y semitonos hay varios eventos con la misma nota.
+
+- **Ajuste final de la V4 (22-10-2026):** los filtros de profundidad muestran sus criterios como etiqueta: Superficial < 50 km, Intermedio 50–100 km y Profundo > 100 km (los mismos umbrales con que el código clasifica cada terremoto). Motivo: para leer la forma de cada marcador hay que saber qué significa cada categoría (contexto, heurística de Zuk-Carpendale).

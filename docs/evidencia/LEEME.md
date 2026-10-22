@@ -1,5 +1,16 @@
 # Evidencia visual de cada versión
 
-- `v1.png`: captura tomada el 13-10-2026 de la página publicada con la V1.
-- `v2.png`, `v3.png`, `v4.png`: capturas tomadas el 22-10-2026, renderizando el código exacto de cada tag (`git archive v2|v3|v4`) en un navegador, sin modificarlo.
-- El **sonido** no se puede capturar en una imagen: cada versión tiene su video con audio, grabado a mano (ver los enlaces en el documento de entrega).
+Cada captura corresponde al código exacto de su versión, identificado por su tag y su commit (con la fecha real del commit). Las capturas de V2, V3 y V4 se obtuvieron renderizando ese código sin modificarlo (`git archive <tag>`).
+
+| Versión | Tag | Commit | Fecha del commit | Captura |
+|---|---|---|---|---|
+| V1 | `v1` | `8756ee7` | 13-10-2026 10:26 | `v1.png` |
+| V2 | `v2` | `8d4688a` | 13-10-2026 11:03 | `v2.png` |
+| V3 | `v3` | `6bae955` | 16-10-2026 13:25 | `v3.png` |
+| V4 | `v4` | `00432b5` | 22-10-2026 11:08 | `v4.png` |
+
+## Sonido de cada versión (no se puede capturar en una imagen; está en el video de cada una)
+
+- **V1 y V2:** tono y duración según la magnitud (de 180 Hz y 0,5 s a 45 Hz y 3,75 s) y timbre según la profundidad (Web Audio).
+- **V3:** tono, volumen, ritmo (de 1 a 7 golpes) y duración; más agudo y fuerte = mayor magnitud (Tone.js).
+- **V4:** solo cambia el tono (de 220 a 1760 Hz); mismo timbre, duración y volumen percibido (Tone.js).

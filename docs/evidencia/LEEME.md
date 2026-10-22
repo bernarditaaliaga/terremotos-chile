@@ -7,7 +7,7 @@ Cada captura corresponde al código exacto de su versión, identificado por su t
 | V1 | `v1` | `8756ee7` | 13-10-2026 10:26 | `v1.png` |
 | V2 | `v2` | `8d4688a` | 13-10-2026 11:03 | `v2.png` |
 | V3 | `v3` | `6bae955` | 16-10-2026 13:25 | `v3.png` |
-| V4 | `v4` | `00432b5` | 22-10-2026 11:08 | `v4.png` |
+| V4 | `v4` | `dc2c858` | 22-10-2026 15:43 | `v4.png` |
 
 ## Sonido de cada versión (no se puede capturar en una imagen; está en el video de cada una)
 

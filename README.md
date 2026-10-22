@@ -171,3 +171,20 @@ git push -u origin main --tags
 - **Motivo (rationale):** lo agudo y fuerte se percibe como más molesto y urgente, como en las alarmas auditivas (cápsula 27); eso calza con un terremoto mayor. Se combinan varias señales (tono, volumen, ritmo y duración) para que la diferencia no dependa de una sola.
 - **Medición:** tono dominante 53 / 94 / 164 / 287 / 498 / 855 Hz para M7 / 7,5 / 8 / 8,5 / 9 / 9,5; volumen eficaz de 0,012 a 0,083 (razón de ~7 veces); pico máximo 0,38.
 - **Limitación:** un M7 suena bajo y grave y puede costar oírlo en parlantes pequeños; no está validado con usuarios; el volumen depende del volumen del dispositivo.
+
+## V4 — la versión final (tras el feedback de la R2)
+
+- **Feedback recibido:** (1) la escala de colores de varios tonos (verde a rojo) no es buena: mejor un solo color de más claro a más oscuro e intenso; (2) no conviene combinar volumen y tono: usar solo el tono; (3) investigar la dirección del tono (¿grave o agudo para la mayor magnitud?); (4) además, en las iteraciones anteriores no se lograba distinguir la diferencia de tono.
+- **Qué cambió:**
+  - **Color:** un solo color (rojo), de más claro (M7) a más oscuro e intenso (M9,5). El orden se lee por luminosidad, que además funciona para el daltonismo.
+  - **Sonido:** solo cambia el **tono**. Todas las notas tienen el mismo timbre (onda triangular), la misma duración (0,75 s) y el mismo volumen percibido (diferencia de 1,8 dB con ponderación A). Se quitaron el volumen variable, el ritmo (golpes), el ruido, el temblor, el estéreo y la aspereza, porque tapaban o confundían la diferencia de tono. El tono va de La3 (220 Hz) a La6 (1.760 Hz), en semitonos, todo en un rango que suena también en parlantes pequeños.
+  - **Comparar:** el botón "7 → 9,5 🔊" y la barra de color clicable permiten oír la diferencia al instante.
+- **Por qué no se distinguía el tono antes (diagnóstico):** el sonido mezclaba tono, volumen, ritmo, ruido y duración, y bajaba hasta ~53 Hz, que casi no se reproduce en un parlante de notebook ni en audífonos; la medición de frecuencia cambiaba, pero lo que se oía era sobre todo ruido y volumen.
+- **Qué se investigó sobre la dirección del tono (resumen y límites):**
+  - Walker y Kramer plantean que la dirección ("polaridad") del mapeo es una variable de diseño que debe medirse; consideran más "natural" un mapeo cuando más personas coinciden en su dirección (Walker & Kramer, 1996, ICAD).
+  - En diseño de alarmas, un tono fundamental más agudo aumenta la urgencia percibida (Edworthy, Loxley & Dennis, 1991, *Human Factors*), lo que respalda "más agudo = más intenso".
+  - La hipótesis del "código de frecuencia" (Ohala) sostiene que lo grave se asocia con lo grande y lo agudo con lo pequeño, pero está discutida; apoyaría "más grave = mayor magnitud".
+  - Estudios sobre menús auditivos indican que las preferencias de polaridad suelen estar divididas entre las personas.
+  - No se encontró una convención establecida para sonificar la magnitud sísmica: es una decisión de diseño que hay que validar con usuarios.
+- **Decisión:** por defecto, **más agudo = mayor magnitud** (urgencia de alarma), con un selector en "⚙ Ajustes" para invertirlo y comparar con usuarios. La elección final depende de la prueba con personas.
+- **Limitaciones:** la dirección del tono no está validada con usuarios; el nivel de volumen depende del dispositivo; con 66 terremotos y semitonos hay varios eventos con la misma nota.

@@ -87,6 +87,7 @@
   #mapa { border-radius: 10px; width: 100%; height: auto; cursor: grab; touch-action: none; }
   #mapa.arrastrando { cursor: grabbing; }
   .zoomBtns { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .escala button.zb { font-size: 0.8rem; padding: 2px 8px; }
   button.zb { padding: 1px 9px; font-size: 1.15rem; line-height: 1.3; background: #fff; color: var(--ink); border: 1px solid #b8c4cf; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   #mapa .oceano-fondo { fill: #dbe9f1; }
   #mapa .vecino { fill: #ebe6da; stroke: #cfc8b8; stroke-width: 0.6; }
@@ -130,14 +131,14 @@
       <label class="mag">Magnitud mínima <b id="vMag">7.0</b>
         <input id="minMag" type="range" min="7" max="9" step="0.1" value="7">
       </label>
-      <span class="escala" title="Color = magnitud. Haz clic en la barra para oír cada magnitud"><b>7</b><i id="gradiente"></i><b>9,5</b><span class="ojo">🔊 clic</span></span>
+      <span class="escala" title="Color = magnitud. Haz clic en la barra para oír cada magnitud"><b>7</b><i id="gradiente"></i><b>9,5</b><span class="ojo">🔊 clic</span><button class="zb" id="comparar" title="Oye un M7 y luego un M9,5">7 → 9,5 🔊</button></span>
       <details class="ajustes">
         <summary title="Ajustes de sonido">⚙ Ajustes</summary>
         <div class="cont">
           <label>Tono del sonido:
             <select id="polaridad" title="Compara cuál se entiende mejor">
-              <option value="agudo" selected>agudo = más intenso</option>
-              <option value="grave">grave = más intenso</option>
+              <option value="agudo" selected>más agudo = mayor magnitud</option>
+              <option value="grave">más grave = mayor magnitud</option>
             </select>
           </label>
           <label>Tiempo por terremoto: <b id="vRitmo">2,5 s</b>
@@ -162,7 +163,7 @@
                  aria-label="Terremotos de magnitud 7 o más en Chile: año en el eje horizontal, magnitud en el vertical"></svg>
           </div>
         </div>
-        <div class="ayuda">👆 Cursor: detalle · Clic: escúchalo · <span id="ayudaSonido">🔊 más agudo, más fuerte y más golpes = más intenso</span></div>
+        <div class="ayuda">👆 Cursor: detalle · Clic: escúchalo · <span id="ayudaSonido">🔊 tono más agudo = mayor magnitud</span></div>
       </div>
       <div class="mapaWrap">
         <svg id="mapa" viewBox="0 0 300 620" role="img" aria-label="Mapa de Chile con los epicentros. Se puede acercar con la rueda del mouse y arrastrar."></svg>
@@ -183,7 +184,7 @@
 <script src="data.js?v=2"></script>
 <script src="chile.js?v=2"></script>
 <script>
-const VERSION_SONIDO = 'sonido-12 (agudo y fuerte = más intenso; tono + volumen + ritmo + duración) · color = magnitud';
+const VERSION_SONIDO = 'sonido-13 (solo cambia el tono: 220 a 1760 Hz) · color = magnitud';
 
 // ---------- Datos ----------
 const eventos = TERREMOTOS.map(e => {
@@ -198,8 +199,8 @@ const nombreClase = { sup: 'Superficial', med: 'Intermedio', prof: 'Profundo' };
 const fmtMag = m => m.toFixed(1).replace('.', ',');
 
 // Color = magnitud (el mismo dato que la altura de la barra, así que no se pierde información si no se distinguen los colores):
-// verde (M7) -> amarillo -> naranjo -> rojo oscuro (M9,5). Profundidad = forma del marcador: círculo, rombo, triángulo.
-const PARADAS = [[7.0, [143, 209, 79]], [7.5, [233, 226, 61]], [8.0, [247, 168, 35]], [8.6, [232, 67, 30]], [9.5, [139, 10, 10]]];
+// un solo color (rojo) de más claro (M7) a más oscuro e intenso (M9,5): el orden se lee por luminosidad. Profundidad = forma del marcador: círculo, rombo, triángulo.
+const PARADAS = [[7.0, [252, 190, 160]], [7.6, [250, 128, 92]], [8.2, [222, 45, 38]], [8.8, [165, 15, 21]], [9.5, [90, 0, 14]]];
 function colorMag(m) {
   const mm = Math.min(Math.max(m, 7), 9.5);
   for (let i = 1; i < PARADAS.length; i++) {
@@ -222,7 +223,7 @@ function marcador(clase, x, y, r, color) {
   const mayor = eventos.reduce((a, b) => (b.mag > a.mag ? b : a));
   const n = eventos.length, g8 = eventos.filter(e => e.mag >= 8).length;
   document.getElementById('titular').textContent = `${n} terremotos de magnitud 7+ en Chile desde 1900`;
-  document.getElementById('bajada').textContent = 'Cada barra es un terremoto: la altura y el color indican su magnitud';
+  document.getElementById('bajada').textContent = 'Cada barra es un terremoto: la altura y la intensidad del color indican su magnitud';
 
   const cada = ((2026 - 1900) / n).toFixed(1).replace('.', ',');
   const tarjetas = [
@@ -591,8 +592,8 @@ function mostrarTip(e, ancla) {
 function ocultarTip() { tip.hidden = true; }
 
 // ---------- Sonido ----------
-// Magnitud -> TONO (agudo a muy grave), RITMO (1 a 7 golpes encadenados) y DURACIÓN, más retumbo y temblor en los grandes.
-// Profundidad -> aspereza (más crujido en lo superficial) y ataque (más lento en lo profundo). Latitud -> estéreo (norte a la izquierda).
+// Magnitud -> SOLO el TONO (de La3, 220 Hz, a La6, 1760 Hz). Mismo timbre, misma duración, mismo volumen percibido.
+// Por defecto lo agudo es lo más intenso (como una alarma); en "⚙ Ajustes" se puede invertir para comparar.
 let busTone = null, ajusteSync = 0, ultimoNodos = null, tonoInvertido = true;   // true: lo agudo (y más fuerte) es más intenso, como una alarma; false: lo grave es más intenso
 function atenuar(nodos) {   // desvanece rápido el sonido anterior para que no se pisen las colas
   nodos.forEach(n => { try { if (n.volume) n.volume.rampTo(-80, 0.12); } catch (_) {} });
@@ -625,77 +626,42 @@ function resaltarPunto(e, dur) {
   resalte = r;
 }
 
+// Ponderación A: aproxima cómo oye el oído humano cada frecuencia (los graves se oyen mucho menos que los agudos a igual nivel).
+const ponderacionA = f => {
+  const f2 = f * f;
+  const ra = (12194 ** 2 * f2 * f2) / ((f2 + 20.6 ** 2) * Math.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2));
+  return 20 * Math.log10(ra) + 2.0;
+};
+const NOTA_BAJA = 57, NOTA_ALTA = 93;   // La3 (220 Hz) a La6 (1760 Hz): tres octavas, todas audibles incluso en un parlante de notebook
+const notaDe = e => {   // SOLO cambia el tono: una nota (en semitonos) según la magnitud
+  const fuerza = Math.min(1, Math.max(0, (e.mag - 7) / 2.5));
+  const f = tonoInvertido ? fuerza : 1 - fuerza;   // tonoInvertido = true: más agudo = mayor magnitud
+  return Math.round(NOTA_BAJA + (NOTA_ALTA - NOTA_BAJA) * f);
+};
+const hzDe = nota => 440 * Math.pow(2, (nota - 69) / 12);
+const DUR_NOTA = 0.75;   // todas las notas duran lo mismo
+
 function sonarTone(e, enCola) {
   if (Tone.context.state !== 'running') {   // el audio aún estaba bloqueado: se activa con el gesto del usuario y se reintenta
     Tone.start().then(() => { if (Tone.context.state === 'running') sonarTone(e, enCola); });
     return;
   }
-  if (!busTone) busTone = new Tone.Limiter(-3).toDestination();   // evita saturación
-  const clase = claseProf(e.prof);
-  const fuerza = (e.mag - 7) / 2.5;                          // 0 (M7,0) a 1 (M9,5)
-  // Tres señales que el oído distingue bien: TONO (agudo -> muy grave), RITMO (1 golpe -> 7 golpes encadenados) y DURACIÓN.
-  const nGolpes = 1 + Math.round(fuerza * 6);                // M7: 1 golpe · M8: 4 · M9,5: 7
-  const hueco = 0.34 - 0.12 * fuerza;                        // separación entre golpes: 0,34 s -> 0,22 s
-  const graveza = tonoInvertido ? 1 - fuerza : fuerza;       // 0 = tono agudo, 1 = tono muy grave
-  const F = 880 * Math.pow(55 / 880, graveza);               // tono: 880 Hz (muy agudo) -> 55 Hz (muy grave)
-  const durGolpe = 0.3 + 1.3 * fuerza;                       // cada golpe dura más cuanto mayor es el terremoto
-  const dur = (nGolpes - 1) * hueco + durGolpe + 0.3;
-  const asp = clase === 'sup' ? 0 : clase === 'med' ? -4 : -8;   // dB de aspereza según la profundidad
-  const nivel = -11 + 20 * fuerza;                           // VOLUMEN: de -11 dB (M7) a +9 dB (M9,5): un rango de 20 dB, unas 3 o 4 veces más fuerte
-  const comp = 5 * graveza;                                  // los graves se oyen menos: se compensan un poco
-  const t = Tone.now();
+  if (!busTone) busTone = new Tone.Limiter(-3).toDestination();
+  // Solo cambia el tono. Mismo timbre, misma duración y el mismo volumen percibido (se compensa lo que el oído no oye en los graves).
+  const hz = hzDe(notaDe(e));
+  const comp = 0.8 * (ponderacionA(880) - ponderacionA(hz));   // dB extra para los graves
   const nodos = [];
-  const nodo = n => (nodos.push(n), n);
-  if (enCola && ultimoNodos) atenuar(ultimoNodos);           // en la reproducción solo suena un terremoto a la vez
+  if (enCola && ultimoNodos) atenuar(ultimoNodos);
   ultimoNodos = nodos;
-
-  const pan = nodo(new Tone.Panner(panDe(e))).connect(busTone);
-  let salida = pan;
-  if (fuerza > 0.3) salida = nodo(new Tone.Tremolo(4 + 6 * fuerza, 0.25 + 0.35 * fuerza).start()).connect(pan);   // temblor en los grandes
-
-  // los golpes: una nota por golpe, cada una un poco más débil (como las réplicas), con armónicos para que el grave se oiga
-  const filtroV = nodo(new Tone.Filter(Math.max(900, F * 8), 'lowpass')).connect(salida);
-  const voz = nodo(new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: 'sawtooth' },
-    envelope: { attack: clase === 'prof' ? 0.04 : 0.004, decay: durGolpe, sustain: 0, release: 0.1 },
-    volume: -15 + nivel + comp + asp * 0.5
-  })).connect(filtroV);
-  voz.maxPolyphony = 8;
-  for (let k = 0; k < nGolpes; k++) {
-    const desvio = 1 + (k % 2 ? 0.025 : -0.025) * fuerza;    // un poco desafinados: suena a roca, no a música
-    voz.triggerAttackRelease(F * desvio, durGolpe * 0.6, t + k * hueco, Math.max(0.35, 1 - 0.1 * k));
-  }
-
-  // golpe de fondo en cada golpe (los chicos solo tienen el "tac" inicial)
-  if (fuerza > 0.25) {
-    const golpe = nodo(new Tone.MembraneSynth({
-      pitchDecay: 0.05, octaves: 2.5,
-      envelope: { attack: 0.003, decay: 0.35, sustain: 0, release: 0.1 },
-      volume: -14 + nivel + comp
-    })).connect(salida);
-    for (let k = 0; k < nGolpes; k++) golpe.triggerAttackRelease(tonoInvertido ? 70 : Math.max(F, 40), 0.1, t + k * hueco + 0.001 * k, Math.max(0.4, 1 - 0.1 * k));
-  }
-
-  // retumbo continuo que se oscurece con la magnitud (ruido marrón filtrado)
-  const corte = 2200 * Math.pow(0.05, graveza);
-  const filtroR = nodo(new Tone.Filter({ type: 'lowpass', frequency: corte, Q: 1 })).connect(salida);
-  const retumbo = nodo(new Tone.NoiseSynth({
-    noise: { type: 'brown' },
-    envelope: { attack: clase === 'prof' ? 0.15 : 0.02, decay: dur, sustain: 0, release: 0.3 },
-    volume: -22 + 0.7 * nivel + asp
-  })).connect(filtroR);
-  retumbo.triggerAttackRelease(dur, t);
-
-  // crujido de la roca al inicio, más marcado en los chicos y en lo superficial
-  const crujido = nodo(new Tone.NoiseSynth({
-    noise: { type: 'pink' },
-    envelope: { attack: 0.001, decay: 0.05 + 0.08 * (1 - fuerza), sustain: 0, release: 0.02 },
-    volume: -12 + 0.5 * nivel + (clase === 'sup' ? 3 : clase === 'med' ? -1 : -6)
-  })).connect(nodo(new Tone.Filter(1800, 'highpass')).connect(pan));
-  crujido.triggerAttackRelease(0.05, t);
-
-  setTimeout(() => nodos.forEach(n => { try { n.dispose(); } catch (_) {} }), (dur + 2.5) * 1000);
-  resaltarPunto(e, dur);
+  const voz = new Tone.Synth({
+    oscillator: { type: 'triangle' },   // tono claro, con algo de armónicos para que se oiga también en parlantes chicos
+    envelope: { attack: 0.02, decay: 0.1, sustain: 0.85, release: 0.2 },
+    volume: -16 + comp
+  }).connect(busTone);
+  nodos.push(voz);
+  voz.triggerAttackRelease(hz, DUR_NOTA - 0.2, Tone.now());
+  setTimeout(() => nodos.forEach(n => { try { n.dispose(); } catch (_) {} }), 2000);
+  resaltarPunto(e, DUR_NOTA);
 }
 
 // Motor de respaldo (Web Audio puro) si Tone.js no carga
@@ -801,6 +767,14 @@ function reproducir() {
 btnPlay.addEventListener('click', reproducir);
 btnStop.addEventListener('click', detener);
 document.getElementById('btnTest').addEventListener('click', probarSonido);
+// Comparar: se oye un M7 y luego un M9,5
+document.getElementById('comparar').addEventListener('click', () => {
+  iniciarAudio().then(() => {
+    const ej = mag => ({ mag, prof: 25, lat: -33, lon: -71, fecha: '', anio: 0 });
+    sonar(ej(7)); document.getElementById('status').textContent = 'M7 …';
+    setTimeout(() => { sonar(ej(9.5)); document.getElementById('status').textContent = '… y M9,5'; }, 1100);
+  });
+});
 // Clic en la barra de colores: se oye esa magnitud (para comparar suave vs fuerte al instante)
 document.getElementById('gradiente').addEventListener('click', ev => {
   const r = ev.currentTarget.getBoundingClientRect();
@@ -824,7 +798,7 @@ document.getElementById('ritmo').addEventListener('input', ev => {
 });
 document.getElementById('polaridad').addEventListener('change', ev => {
   tonoInvertido = ev.target.value === 'agudo';
-  document.getElementById('ayudaSonido').textContent = tonoInvertido ? '🔊 más agudo, más fuerte y más golpes = más intenso' : '🔊 más grave, más fuerte y más golpes = más intenso';
+  document.getElementById('ayudaSonido').textContent = tonoInvertido ? '🔊 tono más agudo = mayor magnitud' : '🔊 tono más grave = mayor magnitud';
 });
 document.getElementById('sync').addEventListener('input', ev => {
   ajusteSync = Number(ev.target.value);

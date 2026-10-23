@@ -172,7 +172,7 @@ git push -u origin main --tags
 - **Medición:** tono dominante 53 / 94 / 164 / 287 / 498 / 855 Hz para M7 / 7,5 / 8 / 8,5 / 9 / 9,5; volumen eficaz de 0,012 a 0,083 (razón de ~7 veces); pico máximo 0,38.
 - **Limitación:** un M7 suena bajo y grave y puede costar oírlo en parlantes pequeños; no está validado con usuarios; el volumen depende del volumen del dispositivo.
 
-## V4 — la versión final (tras el feedback de la R2)
+## V4 — la versión final (tras el feedback de la R3, viernes 16-10-2026)
 
 - **Feedback recibido:** (1) la escala de colores de varios tonos (verde a rojo) no es buena: mejor un solo color de más claro a más oscuro e intenso; (2) no conviene combinar volumen y tono: usar solo el tono; (3) investigar la dirección del tono (¿grave o agudo para la mayor magnitud?); (4) además, en las iteraciones anteriores no se lograba distinguir la diferencia de tono.
 - **Qué cambió:**
